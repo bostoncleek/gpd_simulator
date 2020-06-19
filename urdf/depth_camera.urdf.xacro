@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<robot name="depth_camera" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<link name="camera_base_link"/>
+
+<link name="camera_mesh">
+
+  <inertial>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <mass value="${0.1}"/>
+    <inertia ixx="${0.01}"  ixy="0"  ixz="0" iyy="${0.01}" iyz="0" izz="${0.01}" />
+  </inertial>
+
+  <visual>
+   <geometry>
+     <mesh filename="package://gpd_simulation/meshes/bb2_stereo_cam.dae"/>
+   </geometry>
+  </visual>
+
+ <collision>
+   <origin xyz="0 0 0.05" rpy="0 0 0"/>
+   <geometry>
+     <box size="${0.20} ${0.10} ${0.10}" />
+   </geometry>
+ </collision>
+
+</link>
+
+
+<joint name="base_to_mesh" type="fixed">
+ <parent link="camera_base_link" />
+ <child link="camera_mesh" />
+ <origin xyz="0.43 0 0" rpy="0 0 1.5708" />
+</joint>
+
+
+
+<link name="camera_origin" />
+
+<joint name="mesh_to_origin" type="fixed">
+  <parent link="camera_mesh" />
+  <child link="camera_origin" />
+  <origin xyz="0.001 0 0.07" rpy="0 0 ${-1.5708}" />
+</joint>
+
+
+
+<link name="camera_optical_link" />
+
+<joint name="origin_to_camera" type="fixed">
+  <parent link="camera_origin" />
+  <child link="camera_optical_link" />
+  <origin xyz="0.01 0 0" rpy="${-1.5708} 0 ${-1.5708}" />
+</joint>
+
+
+</robot>

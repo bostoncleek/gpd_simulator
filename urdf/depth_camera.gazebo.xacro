@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<robot name="depth_camera" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+
+  <xacro:include filename="$(find gpd_simulation)/urdf/depth_camera.urdf.xacro"/>
+  <xacro:include filename="$(find gpd_simulation)/urdf/depth_camera_macro.gazebo.xacro"/>
+  <xacro:DepthCamera camera_name="depth_camera" link_name="camera_origin" frame_name="camera_optical_link"/>
+
+  <gazebo reference="camera_mesh">
+    <material>Gazebo/DarkGrey</material>
+  </gazebo>
+
+  <!-- <link name="world"/>
+  <joint name="fixed" type="fixed">
+      <parent link="world"/>
+      <child link="camera_base_link"/>
+  </joint> -->
+
+
+</robot>

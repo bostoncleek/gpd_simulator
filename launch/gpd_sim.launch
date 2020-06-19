@@ -1,0 +1,46 @@
+<launch>
+
+  <!--  option to launch turtlebot in empty world -->
+  <arg name="empty_world" default="true" doc="launch in empty world"/>
+
+  <!-- requests graps and commands robot to move -->
+  <node name="gpd_sim" pkg="gpd_simulation" type="gpd_simulation" output="screen"/>
+
+  <!-- gpd ros wrapper -->
+  <include file ="$(find gpd_ros)/launch/ur5.launch"/>
+
+
+  <!-- load model into parameter server -->
+  <param name="robot_description" command="$(find xacro)/xacro '$(find gpd_simulation)/urdf/depth_camera.gazebo.xacro'"/>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+  <!-- spawn robot using urdf -->
+  <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model"
+    args="-param robot_description -urdf -x 0.0 -y 0.0 -z 0.913 -model depth_camera" respawn="false" output="screen"/>
+
+
+  <!-- load world empty -->
+  <include if="$(arg empty_world)" file="$(find gazebo_ros)/launch/empty_world.launch" >
+    <arg name="paused" value="false"/>
+    <arg name="gui" value="true"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="recording" value="false"/>
+    <arg name="debug" value="false"/>
+    <arg name="verbose" value="false"/>
+  </include>
+
+  <include unless="$(arg empty_world)" file="$(find gazebo_ros)/launch/empty_world.launch" >
+    <!-- <arg name="world_name" value="$(find gpd_simulation)/worlds/cracker_box.world"/> -->
+    <arg name="world_name" value="$(find gpd_simulation)/worlds/chips_can.world"/>
+    <arg name="paused" value="false"/>
+    <arg name="gui" value="true"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="recording" value="false"/>
+    <arg name="debug" value="false"/>
+    <arg name="verbose" value="false"/>
+  </include>
+
+  <node name="rviz" pkg="rviz" type="rviz" required="true" args="-d $(find gpd_simulation)/config/gpd_rviz.rviz"/>
+
+</launch>
