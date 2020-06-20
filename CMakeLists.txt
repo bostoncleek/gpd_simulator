@@ -11,6 +11,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
+
+find_package(PCL 1.11 REQUIRED)
+add_definitions(${PCL_DEFINITIONS})
+
+
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
@@ -118,7 +123,7 @@ catkin_package(
 	roscpp
 	sensor_msgs
 	std_srvs
-#  DEPENDS system_lib
+ DEPENDS PCL
 )
 
 ###########
@@ -130,6 +135,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+	${PCL_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -161,6 +167,7 @@ add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EX
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
 	${gpd_ros_LIBRARIES}
+	${PCL_LIBRARIES}
 )
 
 #############
