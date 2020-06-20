@@ -12,8 +12,20 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <std_srvs/Empty.h>
+// #include <pcl_ros/point_cloud.h>
+#include <pcl_conversions/pcl_conversions.h>
 
-// #include <memory>
+#include <vector>
+
+#include <pcl/common/common.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/extract_indices.h>
 
 #include <gpd_ros/CloudSources.h>
 #include <gpd_ros/CloudSamples.h>
@@ -40,7 +52,48 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
   if (cloud_srv)
   {
     ROS_INFO("point cloud selected");
+
     point_cloud = msg;
+
+    // // use RANSAC to filter points above table
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in (new pcl::PointCloud<pcl::PointXYZ>);
+    // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered (new pcl::PointCloud<pcl::PointXYZ>);
+    //
+    // // convert from ROS msg to a point cloud
+    // pcl::fromROSMsg(*msg.get(), *cloud_in);
+    //
+    // // find inliers to plane
+    // pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+    // pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+    // pcl::SACSegmentation<pcl::PointXYZ> seg;
+    // seg.setOptimizeCoefficients(true);
+    // seg.setModelType(pcl::SACMODEL_PLANE);
+    // seg.setMethodType(pcl::SAC_RANSAC);
+    // seg.setDistanceThreshold (0.01);
+    //
+    // seg.setInputCloud(cloud_in);
+    // seg.segment(*inliers, *coefficients);
+    //
+    // if (inliers->indices.size () == 0)
+    // {
+    //   ROS_ERROR("Could not estimate a planar model for the given dataset");
+    // }
+    //
+    // // extract indices of points not within plane
+    // std::vector<int> outliers;
+    // pcl::ExtractIndices<pcl::PointXYZ> extract;
+    // extract.setInputCloud(cloud_in);
+    // extract.setIndices(inliers);
+    // extract.setNegative(true);
+    // // extract.filter(outliers);
+    //
+    // // fill point cloud with outliers
+    // // extract.setIndices(outliers);
+    // // extract.filter(cloud_filtered);
+    //
+    // // // covert back to ROS msg
+    // // pcl::moveFromROSMsg(point_cloud, *cloud_filtered);
+
 
     cloud_srv = false;
     cloud_msg = true;
@@ -80,11 +133,11 @@ int main(int argc, char** argv)
 
     if (cloud_msg)
     {
-      gpd_ros::CloudSources cloud_sources;
-      cloud_sources.cloud = *point_cloud.get();
-
-      gpd_ros::CloudSamples cloud_samples;
-      cloud_samples.cloud_sources = cloud_sources;
+      // gpd_ros::CloudSources cloud_sources;
+      // cloud_sources.cloud = *point_cloud.get();
+      //
+      // gpd_ros::CloudSamples cloud_samples;
+      // cloud_samples.cloud_sources = cloud_sources;
 
       // could_pub.publish(cloud_samples);
       cloud_pub.publish(*point_cloud.get());
