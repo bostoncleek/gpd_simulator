@@ -1,7 +1,7 @@
 <launch>
 
   <!--  option to launch turtlebot in empty world -->
-  <arg name="empty_world" default="true" doc="launch in empty world"/>
+  <arg name="empty_world" default="false" doc="launch in empty world"/>
 
   <!-- requests graps and commands robot to move -->
   <node name="gpd_sim" pkg="gpd_simulation" type="gpd_simulation" output="screen"/>
@@ -31,8 +31,8 @@
   </include>
 
   <include unless="$(arg empty_world)" file="$(find gazebo_ros)/launch/empty_world.launch" >
-    <!-- <arg name="world_name" value="$(find gpd_simulation)/worlds/cracker_box.world"/> -->
-    <arg name="world_name" value="$(find gpd_simulation)/worlds/chips_can.world"/>
+    <arg name="world_name" value="$(find gpd_simulation)/worlds/cracker_box.world"/>
+    <!-- <arg name="world_name" value="$(find gpd_simulation)/worlds/chips_can.world"/> -->
     <arg name="paused" value="false"/>
     <arg name="gui" value="true"/>
     <arg name="use_sim_time" value="true"/>
