@@ -1,19 +1,14 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 3.0)
 project(gpd_simulation)
 
 # add compile options
-add_compile_options(-Wall -Wextra -Wno-psabi)
+add_compile_options(-Wall -Wextra -Wno-psabi -fdiagnostics-color=always)
 
-# Compile as C++17
-set(CMAKE_CXX_STANDARD 17)
-# don't use gnu extensions
+# Compile as C++14
+set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-
-
-find_package(PCL 1.11 REQUIRED)
-add_definitions(${PCL_DEFINITIONS})
 
 
 ## Find catkin macros and libraries
@@ -21,15 +16,26 @@ add_definitions(${PCL_DEFINITIONS})
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
 	gazebo_ros
+	geometry_msgs
 	gpd_ros
   roscpp
+	moveit_core
+	moveit_ros_planning
+	moveit_ros_planning_interface
+	moveit_visual_tools
 	sensor_msgs
+	std_msgs
 	std_srvs
+	tf2_geometry_msgs
+	tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+find_package(PCL REQUIRED)
+add_definitions(${PCL_DEFINITIONS})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -120,10 +126,18 @@ catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES gpd_simulation
  CATKIN_DEPENDS
+ 	geometry_msgs
 	roscpp
+	moveit_core
+	moveit_ros_planning
+	moveit_ros_planning_interface
+	moveit_visual_tools
 	sensor_msgs
+	std_msgs
 	std_srvs
- DEPENDS PCL
+	tf2_geometry_msgs
+	tf2_ros
+ # DEPENDS PCL
 )
 
 ###########
@@ -135,6 +149,7 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
+	${Eigen3_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
 )
 
@@ -161,12 +176,17 @@ add_executable(${PROJECT_NAME} src/${PROJECT_NAME}_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}
+								 ${${PROJECT_NAME}_EXPORTED_TARGETS}
+								 ${catkin_EXPORTED_TARGETS}
+								 Eigen3::Eigen
+)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-	${gpd_ros_LIBRARIES}
+	# ${gpd_ros_LIBRARIES}
+	${Eigen3_LIBRARIES}
 	${PCL_LIBRARIES}
 )
 
