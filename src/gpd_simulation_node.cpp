@@ -8,16 +8,30 @@
 /// SUBSCRIBES:
 /// SEERVICES:
 
-
+// ROS
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <std_srvs/Empty.h>
-// #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <tf2_ros/transform_listener.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Twist.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+// MoveIt
+#include <moveit/move_group_interface/move_group_interface.h>
+#include <moveit/planning_scene_interface/planning_scene_interface.h>
+#include <moveit_msgs/DisplayRobotState.h>
+#include <moveit_msgs/DisplayTrajectory.h>
+#include <moveit_msgs/AttachedCollisionObject.h>
+#include <moveit_msgs/CollisionObject.h>
+#include <moveit_visual_tools/moveit_visual_tools.h>
+
+// C++
 #include <vector>
 #include <iostream>
 
+// PCL
 #include <pcl/common/common.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -29,17 +43,18 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/cloud_viewer.h>
 
+// GPD
 #include <gpd_ros/CloudSources.h>
 #include <gpd_ros/CloudSamples.h>
 #include <gpd_ros/GraspConfig.h>
 #include <gpd_ros/GraspConfigList.h>
 
 
-static sensor_msgs::PointCloud2 cloud_msg;
-static bool cloud_srv_active;
-static bool cloud_msg_received;
+static sensor_msgs::PointCloud2 cloud_msg;                      // point cloud to search for graps
+static geometry_msgs::TransformStamped t_stamped_base_cam;      // Transform from robot base_link to camera_optical_link
 
-
+static bool cloud_srv_active;                                   // request grasps status
+static bool cloud_msg_received;                                 // point cloud message received status
 
 
 
@@ -86,16 +101,12 @@ void removeTable(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
     // ros::shutdown();
   }
 
-
   // pcl::visualization::CloudViewer viewer ("Cloud");
   // viewer.showCloud (cloud);
   // while (!viewer.wasStopped ())
   // {
   // }
-
 }
-
-
 
 
 bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Response&)
@@ -103,7 +114,6 @@ bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Respo
   cloud_srv_active = true;
   return true;
 }
-
 
 
 void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
@@ -140,7 +150,33 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 
 void graspCallBack(const gpd_ros::GraspConfigList::ConstPtr &msg)
 {
-  ROS_INFO("number of graps received %lud", msg->grasps.size());
+  ROS_INFO("number of graps received %lu", msg->grasps.size());
+
+  // Input grasp position in optical frame of camera
+  geometry_msgs::PointStamped p_in;
+  p_in.point = msg->grasps.at(0).position;
+
+  // Output grasp position in frame of the base_link of the robot
+  geometry_msgs::PointStamped p_out;
+
+  // Transform grasp position into frame of the base_link of the robot
+  tf2::doTransform(p_in, p_out, t_stamped_base_cam);
+
+
+  std::cout << "Position of grasp: " << p_out << std::endl;
+
+
+  std::cout << "approach of grasp: " << msg->grasps.at(0).approach << std::endl;
+  std::cout << "binormal of grasp: " << msg->grasps.at(0).binormal << std::endl;
+  std::cout << "axis of grasp: " << msg->grasps.at(0).axis << std::endl;
+
+
+  // for(unsigned int i = 0; i < msg->grasps.size(); i++)
+  // {
+  //   std::cout << " Grasp: " << i \
+  //             << " Score: " << msg->grasps.at(i).score \
+  //             << " Position: " << msg->grasps.at(i).position << std::endl;
+  // }
 }
 
 
@@ -151,31 +187,116 @@ int main(int argc, char** argv)
   ros::NodeHandle nh("~");
   ros::NodeHandle node_handle;
 
-  ros::Subscriber cloud_sub = node_handle.subscribe("depth_camera/depth/points", 1, cloudCallBack);
-  ros::Subscriber grasp_sub = node_handle.subscribe("detect_grasps/clustered_grasps", 1, graspCallBack);
+  ros::Subscriber cloud_sub = node_handle.subscribe("camera/depth/points", 1, cloudCallBack);
+  // ros::Subscriber cloud_sub = node_handle.subscribe("depth_camera/depth/points", 1, cloudCallBack);
 
-  // ros::Publisher cloud_pub = node_handle.advertise<gpd_ros::CloudSamples>("cloud_stitched", 1);
+
+  ros::Subscriber grasp_sub = node_handle.subscribe("detect_grasps/clustered_grasps", 1, graspCallBack);
   ros::Publisher cloud_pub = node_handle.advertise<sensor_msgs::PointCloud2>("cloud_stitched", 1);
   ros::ServiceServer cloud_serv = node_handle.advertiseService("request_grasp", requestGraspCloudCallBack);
+
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tfListener(tfBuffer);
 
   ROS_INFO("Successfully launch gpd_sim node");
 
   cloud_srv_active = false;
   cloud_msg_received = false;
 
+  // // Required
+  // ros::AsyncSpinner spinner(1);
+  // spinner.start();
+  //
+  // // Move group interface
+  // static const std::string PLANNING_GROUP = "manipulator";
+  // static const std::string END_EFFECTOR_LINK = "ee_link";
+  //
+  // moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
+  // move_group.setEndEffectorLink(END_EFFECTOR_LINK);
+  //
+  // const moveit::core::JointModelGroup* joint_model_group =
+  //      move_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
+  //
+  // // Setup visualization
+  // namespace rvt = rviz_visual_tools;
+  // moveit_visual_tools::MoveItVisualTools visual_tools("shoulder_link");
+  // visual_tools.deleteAllMarkers();
+  // visual_tools.loadRemoteControl();
+  //
+  // Eigen::Isometry3d text_pose = Eigen::Isometry3d::Identity();
+  // text_pose.translation().z() = 1.75;
+  // visual_tools.publishText(text_pose, "MoveGroupInterface Demo", rvt::WHITE, rvt::XLARGE);
+  //
+  // visual_tools.trigger();
+  //
+  // // Reference frame for this robot.
+  // ROS_INFO_NAMED("GPD", "Planning frame: %s", move_group.getPlanningFrame().c_str());
+  //
+  // // End-effector link for this group.
+  // ROS_INFO_NAMED("GPD", "End effector link: %s", move_group.getEndEffectorLink().c_str());
+  //
+  // // List of all the groups in the robot:
+  // ROS_INFO_NAMED("GPD", "Available Planning Groups:");
+  // std::copy(move_group.getJointModelGroupNames().begin(), move_group.getJointModelGroupNames().end(),
+  //           std::ostream_iterator<std::string>(std::cout, ", "));
+  //
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to move to the pose goal");
+  //
+  // // geometry_msgs::PoseStamped eef_link_pose = move_group.getCurrentPose();
+  // // std::cout << eef_link_pose << std::endl;
+  //
+  // // Plan to a pose goal
+  // geometry_msgs::Pose target_pose1;
+  // target_pose1.orientation.x = 0.0;
+  // target_pose1.orientation.y = 0.0;
+  // target_pose1.orientation.z = 1.0;
+  // target_pose1.orientation.w = 0.0;
+  // target_pose1.position.x = -0.15;
+  // target_pose1.position.y = -0.75;
+  // target_pose1.position.z = 1.5;
+  // move_group.setPoseTarget(target_pose1);
+  //
+  // moveit::planning_interface::MoveGroupInterface::Plan my_plan;
+  // bool success = (move_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  // ROS_INFO_NAMED("GPD", "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
+  //
+  // // Visualizing plans
+  // ROS_INFO_NAMED("GPD", "Visualizing plan 1 as trajectory line");
+  // visual_tools.publishAxisLabeled(target_pose1, "pose1");
+  // visual_tools.publishText(text_pose, "Pose Goal", rvt::WHITE, rvt::XLARGE);
+  // visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
+  // visual_tools.trigger();
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue");
+  //
+  // // Move to the goal
+  // move_group.move();
+
+
 
   while(node_handle.ok())
   {
     ros::spinOnce();
 
-    if (cloud_msg_received)
+    // TODO: to this once at start up
+    try
     {
-
-      cloud_pub.publish(cloud_msg);
-
-      cloud_msg_received = false;
+      t_stamped_base_cam = tfBuffer.lookupTransform("base_link", "camera_rgb_optical_frame", ros::Time(0));
+      // std::cout << t_stamped_base_cam << std::endl;
     }
 
+    catch (tf2::TransformException &ex)
+    {
+      ROS_WARN("%s", ex.what());
+      ros::Duration(1.0).sleep();
+      continue;
+    }
+
+
+    if (cloud_msg_received)
+    {
+      cloud_pub.publish(cloud_msg);
+      cloud_msg_received = false;
+    }
   }
 
   return 0;
