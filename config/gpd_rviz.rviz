@@ -136,7 +136,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: ""
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -153,12 +153,12 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: camera_base_link
+    Fixed Frame: camera_origin
     Frame Rate: 30
   Name: root
   Tools:
@@ -189,18 +189,18 @@ Visualization Manager:
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.4523860216140747
-        Y: -0.11262619495391846
-        Z: 0.15979906916618347
+        X: 1.2817115783691406
+        Y: 0.23520022630691528
+        Z: 0.062189873307943344
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2697969079017639
+      Pitch: 0.13479694724082947
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.888589382171631
+      Yaw: 3.563588857650757
     Saved: ~
 Window Geometry:
   Displays:
