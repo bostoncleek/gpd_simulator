@@ -28,6 +28,7 @@ find_package(catkin REQUIRED COMPONENTS
 	std_srvs
 	tf2_geometry_msgs
 	tf2_ros
+	visualization_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -137,6 +138,7 @@ catkin_package(
 	std_srvs
 	tf2_geometry_msgs
 	tf2_ros
+	visualization_msgs
  # DEPENDS PCL
 )
 
