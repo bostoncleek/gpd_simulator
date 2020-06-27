@@ -18,6 +18,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
+
 // MoveIt
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
@@ -78,6 +79,7 @@ static sensor_msgs::PointCloud2 cloud_msg;                      // point cloud t
 static geometry_msgs::TransformStamped t_stamped_base_opt;      // Transform from robot base_link to camera_optical_link
 static geometry_msgs::PoseStamped grasp_pose_robot;             // grasp pose goal
 static Gripper grasp_candidate;                                 // best grasp candidate
+
 
 static bool cloud_srv_active;                                   // request grasps status
 static bool cloud_msg_received;                                 // point cloud message received status
@@ -356,28 +358,17 @@ void visualizeGraspCandidate(visualization_msgs::MarkerArray &marker_array)
 }
 
 
-void openGripper(trajectory_msgs::JointTrajectory& posture)
+void setGripperState(trajectory_msgs::JointTrajectory& posture, double width)
 {
   posture.joint_names.resize(1);
   posture.joint_names[0] = "robotiq_85_left_knuckle_joint";
 
   posture.points.resize(1);
   posture.points[0].positions.resize(1);
-  posture.points[0].positions[0] = 0.0;
+  posture.points[0].positions[0] = width;
   posture.points[0].time_from_start = ros::Duration(0.5);
 }
 
-
-void closedGripper(trajectory_msgs::JointTrajectory& posture)
-{
-  posture.joint_names.resize(1);
-  posture.joint_names[0] = "robotiq_85_left_knuckle_joint";
-
-  posture.points.resize(1);
-  posture.points[0].positions.resize(1);
-  posture.points[0].positions[0] = 0.4; // or 4
-  posture.points[0].time_from_start = ros::Duration(0.5);
-}
 
 
 void addCollisionObjects(moveit::planning_interface::PlanningSceneInterface& planning_scene_interface)
@@ -435,6 +426,15 @@ void addCollisionObjects(moveit::planning_interface::PlanningSceneInterface& pla
 }
 
 
+geometry_msgs::Pose preGrasp(double translation)
+{
+
+}
+
+
+
+
+
 
 
 int main(int argc, char** argv)
@@ -445,11 +445,14 @@ int main(int argc, char** argv)
 
   ros::Subscriber cloud_sub = node_handle.subscribe("camera/depth/points", 1, cloudCallBack);
   // ros::Subscriber cloud_sub = node_handle.subscribe("depth_camera/depth/points", 1, cloudCallBack);
-
   ros::Subscriber grasp_sub = node_handle.subscribe("detect_grasps/clustered_grasps", 1, graspCallBack);
+
   ros::Publisher grasp_viz_pub = node_handle.advertise<visualization_msgs::MarkerArray>("grasp_candidate", 1);
   ros::Publisher grasp_approach_pub = node_handle.advertise<visualization_msgs::Marker>("grasp_approach", 1);
   ros::Publisher cloud_pub = node_handle.advertise<sensor_msgs::PointCloud2>("cloud_stitched", 1);
+  ros::Publisher gripper_cmd_pub = node_handle.advertise<trajectory_msgs::JointTrajectory>("/gripper/command", 1);
+
+
   ros::ServiceServer cloud_serv = node_handle.advertiseService("request_grasp", requestGraspCloudCallBack);
 
   tf2_ros::Buffer tfBuffer;
@@ -508,11 +511,14 @@ int main(int argc, char** argv)
   ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
 
 
-  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
+
+  trajectory_msgs::JointTrajectory gripper_msg;
+
 
   // Add collision objects to scene
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-  addCollisionObjects(planning_scene_interface);
+  // moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+  // addCollisionObjects(planning_scene_interface);
 
 
   // spinner.stop();
@@ -553,17 +559,15 @@ int main(int argc, char** argv)
 
   // spinner.start();
 
+  grasp_pose_robot.header.frame_id = "base_link";
+  grasp_pose_robot.pose.position.x = 0.622204;
+  grasp_pose_robot.pose.position.y = -0.038441;
+  grasp_pose_robot.pose.position.z = 0.105954;
 
-
-  geometry_msgs::Pose pose_goal;
-  pose_goal.position.x = 0.622204;
-  pose_goal.position.y = -0.038441;
-  pose_goal.position.z = 0.105954;
-
-  pose_goal.orientation.x = 0.00222623;
-  pose_goal.orientation.y = -0.00977791;
-  pose_goal.orientation.z = 0.255572;
-  pose_goal.orientation.w = 0.966738;
+  grasp_pose_robot.pose.orientation.x = 0.00222623;
+  grasp_pose_robot.pose.orientation.y = -0.00977791;
+  grasp_pose_robot.pose.orientation.z = 0.255572;
+  grasp_pose_robot.pose.orientation.w = 0.966738;
 
 
   /////////////////////////////////////////////////////
@@ -574,7 +578,7 @@ int main(int argc, char** argv)
   marker.id = 0;
   marker.type = visualization_msgs::Marker::ARROW;
   marker.action = visualization_msgs::Marker::ADD;
-  marker.pose = pose_goal;
+  marker.pose = grasp_pose_robot.pose;
   marker.lifetime = ros::Duration(100);
 
   marker.scale.x = 0.1;
@@ -591,52 +595,52 @@ int main(int argc, char** argv)
 
 
 
-  // Define the pick operation
-  moveit_msgs::Grasp grasp_msg;
-
-  // Gripper is open pre-grasp
-  openGripper(grasp_msg.pre_grasp_posture);
-
-  // Closed for grasp
-  closedGripper(grasp_msg.grasp_posture);
-
-  grasp_msg.grasp_pose.header.frame_id = "base_link";
-  grasp_msg.grasp_pose.pose = pose_goal;
-
-
-  Eigen::Quaterniond quat;
-  tf::quaternionMsgToEigen(pose_goal.orientation, quat);
-
-  Eigen::Matrix3d rot = quat.toRotationMatrix();
-  tf::vectorEigenToMsg(rot.col(0), grasp_msg.pre_grasp_approach.direction.vector);
-
-  grasp_msg.pre_grasp_approach.direction.header.frame_id = "base_link";
-  grasp_msg.pre_grasp_approach.desired_distance = 0.05;
-  grasp_msg.pre_grasp_approach.min_distance = 0.01;
-
-
-  // // GPD grasp candidate
-  // grasp_msg.grasp_pose = grasp_pose_robot;
+  // // Define the pick operation
+  // moveit_msgs::Grasp grasp_msg;
   //
-  // // Setting pre-grasp approach
-  // grasp_msg.pre_grasp_approach.direction.header.frame_id = grasp_candidate.frame_id;
-  // tf::vectorEigenToMsg(grasp_candidate.approach, grasp_msg.pre_grasp_approach.direction.vector);
-  // grasp_msg.pre_grasp_approach.desired_distance = 0.17;
+  // // Gripper is open pre-grasp
+  // openGripper(grasp_msg.pre_grasp_posture);
+  //
+  // // Closed for grasp
+  // closedGripper(grasp_msg.grasp_posture);
+  //
+  // grasp_msg.grasp_pose.header.frame_id = "base_link";
+  // grasp_msg.grasp_pose.pose = pose_goal;
+  //
+  //
+  // Eigen::Quaterniond quat;
+  // tf::quaternionMsgToEigen(pose_goal.orientation, quat);
+  //
+  // Eigen::Matrix3d rot = quat.toRotationMatrix();
+  // tf::vectorEigenToMsg(rot.col(0), grasp_msg.pre_grasp_approach.direction.vector);
+  //
+  // grasp_msg.pre_grasp_approach.direction.header.frame_id = "base_link";
+  // grasp_msg.pre_grasp_approach.desired_distance = 0.05;
   // grasp_msg.pre_grasp_approach.min_distance = 0.01;
-
-
-  // Setting post-grasp retreat
-  grasp_msg.post_grasp_retreat.direction.header.frame_id = "base_link";
-  grasp_msg.post_grasp_retreat.direction.vector.z = 1.0;
-  grasp_msg.post_grasp_retreat.min_distance = 0.05;
-  grasp_msg.post_grasp_retreat.desired_distance = 0.20;
-
-
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
-
-
-  move_group.setSupportSurfaceName("table");
-  move_group.pick("cracker_box", grasp_msg);
+  //
+  //
+  // // // GPD grasp candidate
+  // // grasp_msg.grasp_pose = grasp_pose_robot;
+  // //
+  // // // Setting pre-grasp approach
+  // // grasp_msg.pre_grasp_approach.direction.header.frame_id = grasp_candidate.frame_id;
+  // // tf::vectorEigenToMsg(grasp_candidate.approach, grasp_msg.pre_grasp_approach.direction.vector);
+  // // grasp_msg.pre_grasp_approach.desired_distance = 0.17;
+  // // grasp_msg.pre_grasp_approach.min_distance = 0.01;
+  //
+  //
+  // // Setting post-grasp retreat
+  // grasp_msg.post_grasp_retreat.direction.header.frame_id = "base_link";
+  // grasp_msg.post_grasp_retreat.direction.vector.z = 1.0;
+  // grasp_msg.post_grasp_retreat.min_distance = 0.05;
+  // grasp_msg.post_grasp_retreat.desired_distance = 0.20;
+  //
+  //
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
+  //
+  //
+  // move_group.setSupportSurfaceName("table");
+  // move_group.pick("cracker_box", grasp_msg);
 
 
   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to the pose goal");
