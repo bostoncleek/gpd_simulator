@@ -356,6 +356,74 @@ void visualizeGraspCandidate(visualization_msgs::MarkerArray &marker_array)
 }
 
 
+void openGripper(trajectory_msgs::JointTrajectory& posture)
+{
+  posture.joint_names.resize(1);
+  posture.joint_names[0] = "robotiq_85_left_knuckle_joint";
+
+  posture.points.resize(1);
+  posture.points[0].positions.resize(1);
+  posture.points[0].positions[0] = 0.04;
+  posture.points[0].time_from_start = ros::Duration(0.5);
+}
+
+
+void addCollisionObjects(moveit::planning_interface::PlanningSceneInterface& planning_scene_interface)
+{
+
+  std::vector<moveit_msgs::CollisionObject> collision_objects;
+  collision_objects.resize(2);
+
+  // Add the first table where the cube will originally be kept
+  collision_objects[0].id = "table";
+  collision_objects[0].header.frame_id = "world";
+
+  // Define the primitive and its dimensions
+  collision_objects[0].primitives.resize(1);
+  collision_objects[0].primitives[0].type = collision_objects[0].primitives[0].BOX;
+  collision_objects[0].primitives[0].dimensions.resize(3);
+  collision_objects[0].primitives[0].dimensions[0] = 3.0;
+  collision_objects[0].primitives[0].dimensions[1] = 3.0;
+  collision_objects[0].primitives[0].dimensions[2] = 0.9144;
+
+  // Define the pose of the table
+  collision_objects[0].primitive_poses.resize(1);
+  collision_objects[0].primitive_poses[0].position.x = 0.0;
+  collision_objects[0].primitive_poses[0].position.y = 0.0;
+  collision_objects[0].primitive_poses[0].position.z = 0.4572;
+  collision_objects[0].primitive_poses[0].orientation.w = 1.0;
+
+  collision_objects[0].operation = collision_objects[0].ADD;
+
+
+  // Add the cracker box
+  collision_objects[1].id = "cracker_box";
+  collision_objects[1].header.frame_id = "world";
+
+  // Define the primitive and its dimensions
+  collision_objects[1].primitives.resize(1);
+  collision_objects[1].primitives[0].type = collision_objects[1].primitives[0].BOX;
+  collision_objects[1].primitives[0].dimensions.resize(3);
+  collision_objects[1].primitives[0].dimensions[0] = 0.16;
+  collision_objects[1].primitives[0].dimensions[1] = 0.06;
+  collision_objects[1].primitives[0].dimensions[2] = 0.21;
+
+  // Define the pose of the table
+  collision_objects[1].primitive_poses.resize(1);
+  collision_objects[1].primitive_poses[0].position.x = 0;
+  collision_objects[1].primitive_poses[0].position.y = -0.5;
+  collision_objects[1].primitive_poses[0].position.z = 1.0194;
+  collision_objects[1].primitive_poses[0].orientation.w = 0.5;
+  collision_objects[1].primitive_poses[0].orientation.z = 0.866;
+
+  collision_objects[1].operation = collision_objects[1].ADD;
+
+  // Apply objects to planning scene
+  planning_scene_interface.applyCollisionObjects(collision_objects);
+}
+
+
+
 
 int main(int argc, char** argv)
 {
@@ -390,6 +458,8 @@ int main(int argc, char** argv)
   static const std::string END_EFFECTOR_LINK = "ee_link";
 
   moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
+  move_group.setPlanningTime(45.0);
+
   move_group.setEndEffectorLink(END_EFFECTOR_LINK);
   move_group.setPoseReferenceFrame(POSE_REF_FRAME);
 
@@ -424,105 +494,86 @@ int main(int argc, char** argv)
   ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
 
 
-  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to move to the pose goal");
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
+
+
+  moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+
+  addCollisionObjects(planning_scene_interface);
+
+
+  moveit_msgs::Grasp grasp_msg;
+
+  // openGripper(grasp_msg.pre_grasp_posture);
+
+
+
+
+  // spinner.stop();
+
+  // ROS_INFO("Waiting for grasp candidate... ");
+  // while(node_handle.ok())
+  // {
+  //   ros::spinOnce();
   //
-  // geometry_msgs::PoseStamped eef_link_pose = move_group.getCurrentPose();
-  // std::cout << eef_link_pose << std::endl;
+  //   try
+  //   {
+  //     // ROS_INFO("Looking up transform between base_link and camera_rgb_optical_frame...");
+  //     t_stamped_base_opt = tfBuffer.lookupTransform("base_link", "camera_rgb_optical_frame", ros::Time(2.0));
+  //   }
   //
-  // // Plan to a pose goal
-  // geometry_msgs::Pose target_pose1;
-  // target_pose1.orientation.x = 0.0;
-  // target_pose1.orientation.y = 0.0;
-  // target_pose1.orientation.z = 1.0;
-  // target_pose1.orientation.w = 0.0;
-  // target_pose1.position.x = -0.15;
-  // target_pose1.position.y = -0.75;
-  // target_pose1.position.z = 1.5;
-  // move_group.setPoseTarget(target_pose1);
+  //   catch (tf2::TransformException &ex)
+  //   {
+  //     ROS_WARN("%s", ex.what());
+  //     // ROS_ERROR("No transform between base_link and camera_rgb_optical_frame found");
+  //     // ros::shutdown();
+  //   }
   //
-  // moveit::planning_interface::MoveGroupInterface::Plan my_plan;
-  // bool success = (move_group.plan(my_plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
+  //   if (cloud_msg_received)
+  //   {
+  //     cloud_pub.publish(cloud_msg);
+  //     cloud_msg_received = false;
+  //   }
+  //
+  //   if (grasp_selected)
+  //   {
+  //     visualization_msgs::MarkerArray marker_array;
+  //     visualizeGraspCandidate(marker_array);
+  //     grasp_viz_pub.publish(marker_array);
+  //     grasp_selected = false;
+  //     break;
+  //   }
+  // }
+  //
+  // // spinner.start();
+  //
+  //
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to the pose goal");
+  //
+  // // Set pose goal from GPD
+  // // move_group.setGoalPositionTolerance(0.05);
+  // // move_group.setGoalOrientationTolerance(0.05);
+  // move_group.setPlanningTime(30.0);
+  // // grasp_pose_robot.pose.position.z += 0.2;
+  // move_group.setPoseTarget(grasp_pose_robot.pose);
+  //
+  //
+  // // Compose motion plan
+  // moveit::planning_interface::MoveGroupInterface::Plan plan;
+  // bool success = (move_group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
   // ROS_INFO_NAMED("GPD", "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
   //
   // // Visualizing plans
   // ROS_INFO_NAMED("GPD", "Visualizing plan 1 as trajectory line");
-  // visual_tools.publishAxisLabeled(target_pose1, "pose1");
+  // visual_tools.publishAxisLabeled(grasp_pose_robot.pose, "graps pose");
   // visual_tools.publishText(text_pose, "Pose Goal", rvt::WHITE, rvt::XLARGE);
-  // visual_tools.publishTrajectoryLine(my_plan.trajectory_, joint_model_group);
+  // visual_tools.publishTrajectoryLine(plan.trajectory_, joint_model_group);
   // visual_tools.trigger();
-  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to continue");
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to move to the pose goal");
   //
   // // Move to the goal
-  // move_group.move();
-
-  // spinner.stop();
-
-  ROS_INFO("Waiting for grasp candidate... ");
-  while(node_handle.ok())
-  {
-    ros::spinOnce();
-
-    try
-    {
-      // ROS_INFO("Looking up transform between base_link and camera_rgb_optical_frame...");
-      t_stamped_base_opt = tfBuffer.lookupTransform("base_link", "camera_rgb_optical_frame", ros::Time(2.0));
-    }
-
-    catch (tf2::TransformException &ex)
-    {
-      ROS_WARN("%s", ex.what());
-      // ROS_ERROR("No transform between base_link and camera_rgb_optical_frame found");
-      // ros::shutdown();
-    }
-
-    if (cloud_msg_received)
-    {
-      cloud_pub.publish(cloud_msg);
-      cloud_msg_received = false;
-    }
-
-    if (grasp_selected)
-    {
-      visualization_msgs::MarkerArray marker_array;
-      visualizeGraspCandidate(marker_array);
-      grasp_viz_pub.publish(marker_array);
-      grasp_selected = false;
-      break;
-    }
-  }
-
-  // spinner.start();
-
-
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to the pose goal");
-
-  // Set pose goal from GPD
-  // move_group.setGoalPositionTolerance(0.05);
-  // move_group.setGoalOrientationTolerance(0.05);
-  move_group.setPlanningTime(30.0);
-  grasp_pose_robot.pose.position.z += 0.2;
-  move_group.setPoseTarget(grasp_pose_robot.pose);
-
-  // move_group.setPositionTarget(grasp_pose_robot.pose.position.x,
-  //                              grasp_pose_robot.pose.position.y,
-  //                              grasp_pose_robot.pose.position.z);
-
-  // Compose motion plan
-  moveit::planning_interface::MoveGroupInterface::Plan plan;
-  bool success = (move_group.plan(plan) == moveit::planning_interface::MoveItErrorCode::SUCCESS);
-  ROS_INFO_NAMED("GPD", "Visualizing plan 1 (pose goal) %s", success ? "" : "FAILED");
-
-  // Visualizing plans
-  ROS_INFO_NAMED("GPD", "Visualizing plan 1 as trajectory line");
-  visual_tools.publishAxisLabeled(grasp_pose_robot.pose, "graps pose");
-  visual_tools.publishText(text_pose, "Pose Goal", rvt::WHITE, rvt::XLARGE);
-  visual_tools.publishTrajectoryLine(plan.trajectory_, joint_model_group);
-  visual_tools.trigger();
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to move to the pose goal");
-
-  // Move to the goal
-  // move_group.move();
-  move_group.execute(plan);
+  // // move_group.move();
+  // move_group.execute(plan);
 
 
   ros::shutdown();
