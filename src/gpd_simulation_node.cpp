@@ -386,10 +386,12 @@ int main(int argc, char** argv)
 
   // Move group interface
   static const std::string PLANNING_GROUP = "manipulator";
+  static const std::string POSE_REF_FRAME = "base_link";
   static const std::string END_EFFECTOR_LINK = "ee_link";
 
   moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
   move_group.setEndEffectorLink(END_EFFECTOR_LINK);
+  move_group.setPoseReferenceFrame(POSE_REF_FRAME);
 
   const moveit::core::JointModelGroup* joint_model_group =
        move_group.getCurrentState()->getJointModelGroup(PLANNING_GROUP);
@@ -416,6 +418,11 @@ int main(int argc, char** argv)
   ROS_INFO_NAMED("GPD", "Available Planning Groups:");
   std::copy(move_group.getJointModelGroupNames().begin(), move_group.getJointModelGroupNames().end(),
             std::ostream_iterator<std::string>(std::cout, ", "));
+
+
+  ROS_INFO_NAMED("GPD", "Pose reference frame: %s", move_group.getPoseReferenceFrame().c_str());
+  ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
+
 
   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to move to the pose goal");
   //
@@ -448,7 +455,7 @@ int main(int argc, char** argv)
   // // Move to the goal
   // move_group.move();
 
-  spinner.stop();
+  // spinner.stop();
 
   ROS_INFO("Waiting for grasp candidate... ");
   while(node_handle.ok())
@@ -484,21 +491,21 @@ int main(int argc, char** argv)
     }
   }
 
-  spinner.start();
+  // spinner.start();
 
 
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to the pose goal");
 
   // Set pose goal from GPD
-  move_group.setGoalPositionTolerance(0.05);
+  // move_group.setGoalPositionTolerance(0.05);
   // move_group.setGoalOrientationTolerance(0.05);
-  move_group.setPlanningTime(60.0);
+  move_group.setPlanningTime(30.0);
   grasp_pose_robot.pose.position.z += 0.2;
-  // move_group.setPoseTarget(grasp_pose_robot.pose);
+  move_group.setPoseTarget(grasp_pose_robot.pose);
 
-  move_group.setPositionTarget(grasp_pose_robot.pose.position.x,
-                               grasp_pose_robot.pose.position.y,
-                               grasp_pose_robot.pose.position.z);
+  // move_group.setPositionTarget(grasp_pose_robot.pose.position.x,
+  //                              grasp_pose_robot.pose.position.y,
+  //                              grasp_pose_robot.pose.position.z);
 
   // Compose motion plan
   moveit::planning_interface::MoveGroupInterface::Plan plan;
