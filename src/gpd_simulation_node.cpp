@@ -227,9 +227,6 @@ void graspCallBack(const gpd_ros::GraspConfigList::ConstPtr &msg)
   // geometry_msgs::PoseStamped grasp_pose_robot;
   tf2::doTransform(grasp_pose_optical, grasp_pose_robot, t_stamped_base_opt);
 
-  std::cout << "Pose of grasp in base_link frame: " << grasp_pose_robot << std::endl;
-
-
   // Convert to representation used to visualize in frame of robot's base_link
   tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
   Eigen::Matrix3d grasp_rot = grasp_candidate.quat.toRotationMatrix();
@@ -242,6 +239,9 @@ void graspCallBack(const gpd_ros::GraspConfigList::ConstPtr &msg)
   grasp_candidate.width = msg->grasps.at(0).width.data;
   grasp_candidate.score = msg->grasps.at(0).score.data;
   grasp_candidate.frame_id = grasp_pose_robot.header.frame_id;
+
+  std::cout << "Pose of grasp in base_link frame: " << grasp_pose_robot << std::endl;
+  ROS_INFO_NAMED("GPD", "Required gripper width: %f", grasp_candidate.width);
 
   grasp_selected = true;
 }
@@ -363,7 +363,19 @@ void openGripper(trajectory_msgs::JointTrajectory& posture)
 
   posture.points.resize(1);
   posture.points[0].positions.resize(1);
-  posture.points[0].positions[0] = 0.04;
+  posture.points[0].positions[0] = 0.0;
+  posture.points[0].time_from_start = ros::Duration(0.5);
+}
+
+
+void closedGripper(trajectory_msgs::JointTrajectory& posture)
+{
+  posture.joint_names.resize(1);
+  posture.joint_names[0] = "robotiq_85_left_knuckle_joint";
+
+  posture.points.resize(1);
+  posture.points[0].positions.resize(1);
+  posture.points[0].positions[0] = 0.4; // or 4
   posture.points[0].time_from_start = ros::Duration(0.5);
 }
 
@@ -436,6 +448,7 @@ int main(int argc, char** argv)
 
   ros::Subscriber grasp_sub = node_handle.subscribe("detect_grasps/clustered_grasps", 1, graspCallBack);
   ros::Publisher grasp_viz_pub = node_handle.advertise<visualization_msgs::MarkerArray>("grasp_candidate", 1);
+  ros::Publisher grasp_approach_pub = node_handle.advertise<visualization_msgs::Marker>("grasp_approach", 1);
   ros::Publisher cloud_pub = node_handle.advertise<sensor_msgs::PointCloud2>("cloud_stitched", 1);
   ros::ServiceServer cloud_serv = node_handle.advertiseService("request_grasp", requestGraspCloudCallBack);
 
@@ -458,7 +471,8 @@ int main(int argc, char** argv)
   static const std::string END_EFFECTOR_LINK = "ee_link";
 
   moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
-  move_group.setPlanningTime(45.0);
+  move_group.setPlanningTime(60.0);
+  // move_group.setNumPlanningAttempts(2);
 
   move_group.setEndEffectorLink(END_EFFECTOR_LINK);
   move_group.setPoseReferenceFrame(POSE_REF_FRAME);
@@ -494,19 +508,11 @@ int main(int argc, char** argv)
   ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
 
 
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
 
-
+  // Add collision objects to scene
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-
   addCollisionObjects(planning_scene_interface);
-
-
-  moveit_msgs::Grasp grasp_msg;
-
-  // openGripper(grasp_msg.pre_grasp_posture);
-
-
 
 
   // spinner.stop();
@@ -544,18 +550,104 @@ int main(int argc, char** argv)
   //     break;
   //   }
   // }
+
+  // spinner.start();
+
+
+
+  geometry_msgs::Pose pose_goal;
+  pose_goal.position.x = 0.622204;
+  pose_goal.position.y = -0.038441;
+  pose_goal.position.z = 0.105954;
+
+  pose_goal.orientation.x = 0.00222623;
+  pose_goal.orientation.y = -0.00977791;
+  pose_goal.orientation.z = 0.255572;
+  pose_goal.orientation.w = 0.966738;
+
+
+  /////////////////////////////////////////////////////
+  visualization_msgs::Marker marker;
+  marker.header.frame_id = "base_link";
+  marker.header.stamp = ros::Time();
+  marker.ns = "approach";
+  marker.id = 0;
+  marker.type = visualization_msgs::Marker::ARROW;
+  marker.action = visualization_msgs::Marker::ADD;
+  marker.pose = pose_goal;
+  marker.lifetime = ros::Duration(100);
+
+  marker.scale.x = 0.1;
+  marker.scale.y = 0.01;
+  marker.scale.z = 0.01;
+
+  marker.color.a = 1.0;
+  marker.color.r = 1.0;
+  marker.color.g = 0.0;
+  marker.color.b = 0.0;
+
+  grasp_approach_pub.publish(marker);
+  /////////////////////////////////////////////////////
+
+
+
+  // Define the pick operation
+  moveit_msgs::Grasp grasp_msg;
+
+  // Gripper is open pre-grasp
+  openGripper(grasp_msg.pre_grasp_posture);
+
+  // Closed for grasp
+  closedGripper(grasp_msg.grasp_posture);
+
+  grasp_msg.grasp_pose.header.frame_id = "base_link";
+  grasp_msg.grasp_pose.pose = pose_goal;
+
+
+  Eigen::Quaterniond quat;
+  tf::quaternionMsgToEigen(pose_goal.orientation, quat);
+
+  Eigen::Matrix3d rot = quat.toRotationMatrix();
+  tf::vectorEigenToMsg(rot.col(0), grasp_msg.pre_grasp_approach.direction.vector);
+
+  grasp_msg.pre_grasp_approach.direction.header.frame_id = "base_link";
+  grasp_msg.pre_grasp_approach.desired_distance = 0.05;
+  grasp_msg.pre_grasp_approach.min_distance = 0.01;
+
+
+  // // GPD grasp candidate
+  // grasp_msg.grasp_pose = grasp_pose_robot;
   //
-  // // spinner.start();
-  //
-  //
+  // // Setting pre-grasp approach
+  // grasp_msg.pre_grasp_approach.direction.header.frame_id = grasp_candidate.frame_id;
+  // tf::vectorEigenToMsg(grasp_candidate.approach, grasp_msg.pre_grasp_approach.direction.vector);
+  // grasp_msg.pre_grasp_approach.desired_distance = 0.17;
+  // grasp_msg.pre_grasp_approach.min_distance = 0.01;
+
+
+  // Setting post-grasp retreat
+  grasp_msg.post_grasp_retreat.direction.header.frame_id = "base_link";
+  grasp_msg.post_grasp_retreat.direction.vector.z = 1.0;
+  grasp_msg.post_grasp_retreat.min_distance = 0.05;
+  grasp_msg.post_grasp_retreat.desired_distance = 0.20;
+
+
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
+
+
+  move_group.setSupportSurfaceName("table");
+  move_group.pick("cracker_box", grasp_msg);
+
+
   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to the pose goal");
   //
   // // Set pose goal from GPD
   // // move_group.setGoalPositionTolerance(0.05);
   // // move_group.setGoalOrientationTolerance(0.05);
-  // move_group.setPlanningTime(30.0);
   // // grasp_pose_robot.pose.position.z += 0.2;
-  // move_group.setPoseTarget(grasp_pose_robot.pose);
+  // // move_group.setPoseTarget(grasp_pose_robot.pose);
+  // pose_goal.position.z += 0.2;
+  // move_group.setPoseTarget(pose_goal);
   //
   //
   // // Compose motion plan

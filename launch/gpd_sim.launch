@@ -16,7 +16,7 @@
 
   <!-- spawn robot using urdf -->
   <node name="spawn_urdf_1" pkg="gazebo_ros" type="spawn_model"
-    args="-param cracker_box_description -urdf -x 0.0 -y -0.5 -z 1.0194 -Y 1.5707 -model cracker_box" respawn="false" output="screen"/>
+    args="-param cracker_box_description -urdf -x 0.0 -y -0.5 -z 1.0194 -Y 2.094 -model cracker_box" respawn="false" output="screen"/>
 
 
   <!-- spawn robot using urdf -->
