@@ -1,7 +1,13 @@
 
 # Overview
-Provides an interface for simulating grasp pose determination using a UR5 robot
+Provides an interface for simulating grasp pose detection (GPD) using a UR5 robot
 with a Robotiq 85 gripper.
+
+GPD composes a 6-DOF grasp poses for 2-finger robot grippers. The input is a 3D point cloud and produces pose estimates of possible grasps [1].
+
+GPD consists of two main steps: </br>
+1) Sampling a large number of grasp candidates </br>
+2) Classifying the candidates as viable grasps
 
 # Getting started
 1) Download and install the [GPD library](https://github.com/atenpas/gpd). I am running Ubuntu 18.04 and ROS Melodic and found that in order to successfully use the GPD library the `-03` compiler optimization needs to be removed from the GPD `CMakeLists.txt`.
@@ -60,3 +66,6 @@ The green marker is the highest ranked grasp candidate using point cloud data.
 1) In order to successfully use the GPD library the `-03` compiler optimization needs to be removed from the GPD `CMakeLists.txt`.
 
 2) The gripper is not usually able to successfully lift the cracker box in Gazebo as a result of the difficulty in contact modeling. A possible future solution will use a world plugin to create the joint at run time.
+
+# References
+[1] Andreas ten Pas, Marcus Gualtieri, Kate Saenko, and Robert Platt. [Grasp Pose Detection in Point Clouds.](https://arxiv.org/abs/1706.09911) The International Journal of Robotics Research, Vol 36, Issue 13-14, pp. 1455-1473. October 2017.
