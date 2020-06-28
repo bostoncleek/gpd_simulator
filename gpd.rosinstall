@@ -1,0 +1,16 @@
+- git:
+    local-name: gpd_simulator
+    uri: https://github.com/bostoncleek/gpd_simulator.git
+    version: master
+- git:
+    local-name: gpd_ros
+    uri: https://github.com/bostoncleek/gpd_ros.git
+    version: master
+- git:
+    local-name: universal_robot
+    uri: https://github.com/bostoncleek/universal_robot.git
+    version: feature/ur5_custom_world
+- git:
+    local-name: robotiq_85_gripper
+    uri: https://github.com/bostoncleek/robotiq_85_gripper.git
+    version: master

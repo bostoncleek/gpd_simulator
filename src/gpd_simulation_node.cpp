@@ -1,12 +1,20 @@
-/// \file
-/// \brief publish a point cloud and retrieve grasp from GPD
-///
-/// \author Boston Cleek
-/// \date 6/18/20
-///
-/// PUBLISHES:
-/// SUBSCRIBES:
-/// SEERVICES:
+/**
+* @file gpd_simulation_node.cpp
+* @author Boston Cleek
+* @date 28 Jun 2020
+* @brief Uses grasp pose determination to select a grasp candidate
+*        and plans to grasp pose using MoveIt.
+*
+* @PUBLISHES:
+*   grasp_candidate (visualization_msgs/MarkerArray): best grasp candidate visualization
+*   grasp_approach (visualization_msgs/Marker): grasp candidate approach vector visualization
+*   cloud_stitched (sensor_msgs::PointCloud2): filtered point cloud for GPD
+* @SUBSCRIBES:
+*   camera/depth/points (sensor_msgs/PointCloud2): raw point cloud
+*   detect_grasps/clustered_grasps (gpd_ros/GraspConfigList): list of all grasp candidates from GPD
+* @SEERVICES:
+*   request_grasp (std_srvs/Empty): requests grasp candidates and selects current point cloud as the input to GPD
+*/
 
 // ROS
 #include <ros/ros.h>
@@ -57,7 +65,7 @@
 
 
 /**
-* @brief Required data for grasp candidate 
+* @brief Required data for grasp candidate
 */
 struct Gripper
 {
