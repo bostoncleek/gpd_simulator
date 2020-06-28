@@ -4,7 +4,7 @@
   <node name="gpd_sim" pkg="gpd_simulation" type="gpd_simulation" output="screen"/>
 
   <!-- gpd ros wrapper -->
-  <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
+  <!-- <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/> -->
 
 
   <!-- load model into parameter server -->

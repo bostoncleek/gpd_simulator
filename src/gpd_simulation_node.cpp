@@ -426,12 +426,37 @@ void addCollisionObjects(moveit::planning_interface::PlanningSceneInterface& pla
 }
 
 
-geometry_msgs::Pose preGrasp(double translation)
+geometry_msgs::Pose preGrasp(double distance)
 {
+  geometry_msgs::Pose pre_grasp = grasp_pose_robot.pose;
 
+  // L2-norm of approach vector
+  const auto approach_norm = grasp_candidate.approach.norm();
+
+  // Flip direction of approach vector and noralmize it
+  // Multiply by the distance to get translation in the specified direction
+  pre_grasp.position.x += (grasp_candidate.approach(0) / approach_norm) * (-1.0 * distance);
+  pre_grasp.position.y += (grasp_candidate.approach(1) / approach_norm) * (-1.0 * distance);
+  pre_grasp.position.z += (grasp_candidate.approach(2) / approach_norm) * (-1.0 * distance);
+
+  return pre_grasp;
 }
 
 
+geometry_msgs::Pose graspPose(const geometry_msgs::Pose &pre_grasp, double distance)
+{
+  geometry_msgs::Pose grasp_goal = pre_grasp;
+
+  // L2-norm of approach vector
+  const auto approach_norm = grasp_candidate.approach.norm();
+
+  // Multiply by the distance to get translation in the specified direction after normalization
+  grasp_goal.position.x += (grasp_candidate.approach(0) / approach_norm) * distance;
+  grasp_goal.position.y += (grasp_candidate.approach(1) / approach_norm) * distance;
+  grasp_goal.position.z += (grasp_candidate.approach(2) / approach_norm) * distance;
+
+  return grasp_goal;
+}
 
 
 
@@ -511,10 +536,6 @@ int main(int argc, char** argv)
   ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
 
 
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
-
-  trajectory_msgs::JointTrajectory gripper_msg;
-
 
   // Add collision objects to scene
   // moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
@@ -559,6 +580,8 @@ int main(int argc, char** argv)
 
   // spinner.start();
 
+  /////////////////////////////////////////////////////
+  // Hard code goal
   grasp_pose_robot.header.frame_id = "base_link";
   grasp_pose_robot.pose.position.x = 0.622204;
   grasp_pose_robot.pose.position.y = -0.038441;
@@ -568,6 +591,10 @@ int main(int argc, char** argv)
   grasp_pose_robot.pose.orientation.y = -0.00977791;
   grasp_pose_robot.pose.orientation.z = 0.255572;
   grasp_pose_robot.pose.orientation.w = 0.966738;
+
+  tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
+  grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
+  /////////////////////////////////////////////////////
 
 
   /////////////////////////////////////////////////////
@@ -594,53 +621,31 @@ int main(int argc, char** argv)
   /////////////////////////////////////////////////////
 
 
+  /////////////////////////////////////////////////////
+  // Pick
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to pre-grasp");
 
-  // // Define the pick operation
-  // moveit_msgs::Grasp grasp_msg;
-  //
-  // // Gripper is open pre-grasp
-  // openGripper(grasp_msg.pre_grasp_posture);
-  //
-  // // Closed for grasp
-  // closedGripper(grasp_msg.grasp_posture);
-  //
-  // grasp_msg.grasp_pose.header.frame_id = "base_link";
-  // grasp_msg.grasp_pose.pose = pose_goal;
-  //
-  //
-  // Eigen::Quaterniond quat;
-  // tf::quaternionMsgToEigen(pose_goal.orientation, quat);
-  //
-  // Eigen::Matrix3d rot = quat.toRotationMatrix();
-  // tf::vectorEigenToMsg(rot.col(0), grasp_msg.pre_grasp_approach.direction.vector);
-  //
-  // grasp_msg.pre_grasp_approach.direction.header.frame_id = "base_link";
-  // grasp_msg.pre_grasp_approach.desired_distance = 0.05;
-  // grasp_msg.pre_grasp_approach.min_distance = 0.01;
-  //
-  //
-  // // // GPD grasp candidate
-  // // grasp_msg.grasp_pose = grasp_pose_robot;
-  // //
-  // // // Setting pre-grasp approach
-  // // grasp_msg.pre_grasp_approach.direction.header.frame_id = grasp_candidate.frame_id;
-  // // tf::vectorEigenToMsg(grasp_candidate.approach, grasp_msg.pre_grasp_approach.direction.vector);
-  // // grasp_msg.pre_grasp_approach.desired_distance = 0.17;
-  // // grasp_msg.pre_grasp_approach.min_distance = 0.01;
-  //
-  //
-  // // Setting post-grasp retreat
-  // grasp_msg.post_grasp_retreat.direction.header.frame_id = "base_link";
-  // grasp_msg.post_grasp_retreat.direction.vector.z = 1.0;
-  // grasp_msg.post_grasp_retreat.min_distance = 0.05;
-  // grasp_msg.post_grasp_retreat.desired_distance = 0.20;
-  //
-  //
-  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
-  //
-  //
-  // move_group.setSupportSurfaceName("table");
-  // move_group.pick("cracker_box", grasp_msg);
+  // Open gripper
+  trajectory_msgs::JointTrajectory gripper_state_msg;
+  setGripperState(gripper_state_msg, 0.0);
+  gripper_cmd_pub.publish(gripper_state_msg);
+
+  // Pre-grasp displacement
+  geometry_msgs::Pose pre_grasp = preGrasp(0.25);
+  move_group.setPoseTarget(pre_grasp);
+  move_group.move();
+
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to grasp");
+
+  geometry_msgs::Pose grasp_goal = graspPose(pre_grasp, 0.1);
+  move_group.setPoseTarget(grasp_goal);
+  move_group.move();
+
+  // Close gripper
+  setGripperState(gripper_state_msg, 0.6);
+  gripper_cmd_pub.publish(gripper_state_msg);
+  /////////////////////////////////////////////////////
+
 
 
   // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to the pose goal");
