@@ -600,36 +600,35 @@ int main(int argc, char** argv)
   // Closed for grasp
   closedGripper(grasp_msg.grasp_posture);
 
+  // Set the grasp pose (EE link)
   grasp_msg.grasp_pose.header.frame_id = "base_link";
   grasp_msg.grasp_pose.pose = pose_goal;
 
-
+  // Set the pre-grasp pose
   Eigen::Quaterniond quat;
   tf::quaternionMsgToEigen(pose_goal.orientation, quat);
-
   Eigen::Matrix3d rot = quat.toRotationMatrix();
-  tf::vectorEigenToMsg(rot.col(0), grasp_msg.pre_grasp_approach.direction.vector);
+
+  // Normalize the approach vector
+  const double norm = rot.col(0).norm();
+  Eigen::Vector3d approach_norm;
+  approach_norm(0) = (rot(0,0) / norm);
+  approach_norm(1) = (rot(1,0) / norm);
+  approach_norm(2) = (rot(2,0) / norm);
+
+
+  tf::vectorEigenToMsg(approach_norm, grasp_msg.pre_grasp_approach.direction.vector);
 
   grasp_msg.pre_grasp_approach.direction.header.frame_id = "base_link";
-  grasp_msg.pre_grasp_approach.desired_distance = 0.05;
-  grasp_msg.pre_grasp_approach.min_distance = 0.01;
-
-
-  // // GPD grasp candidate
-  // grasp_msg.grasp_pose = grasp_pose_robot;
-  //
-  // // Setting pre-grasp approach
-  // grasp_msg.pre_grasp_approach.direction.header.frame_id = grasp_candidate.frame_id;
-  // tf::vectorEigenToMsg(grasp_candidate.approach, grasp_msg.pre_grasp_approach.direction.vector);
-  // grasp_msg.pre_grasp_approach.desired_distance = 0.17;
-  // grasp_msg.pre_grasp_approach.min_distance = 0.01;
+  grasp_msg.pre_grasp_approach.desired_distance = 0.25;
+  grasp_msg.pre_grasp_approach.min_distance = 0.10;
 
 
   // Setting post-grasp retreat
-  grasp_msg.post_grasp_retreat.direction.header.frame_id = "base_link";
-  grasp_msg.post_grasp_retreat.direction.vector.z = 1.0;
-  grasp_msg.post_grasp_retreat.min_distance = 0.05;
-  grasp_msg.post_grasp_retreat.desired_distance = 0.20;
+  // grasp_msg.post_grasp_retreat.direction.header.frame_id = "base_link";
+  // grasp_msg.post_grasp_retreat.direction.vector.z = 1.0;
+  // grasp_msg.post_grasp_retreat.min_distance = 0.05;
+  // grasp_msg.post_grasp_retreat.desired_distance = 0.20;
 
 
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window");
