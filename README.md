@@ -32,9 +32,19 @@ with a Robotiq 85 gripper.
 
 `rosservice call /request_grasp`
 
+4) Press `q` on the point cloud viewer window to continue the demo
+
 
 # Results
-The green marker is the highest ranked grasp candidate using point cloud data. 
+
+On this run 26 grasp candidates (shown in blue) where generated.
+
+<p align="center">
+  <img src="media/gpdcandidates.jpg" width="450" height="450"/>
+</p>
+
+
+The green marker is the highest ranked grasp candidate using point cloud data.
 
 <p align="center">
   <img src="media/gpdur5rviz.gif" width="450" height="450"/>
