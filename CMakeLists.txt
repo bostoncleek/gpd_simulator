@@ -169,6 +169,7 @@ include_directories(
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME} src/${PROJECT_NAME}_node.cpp)
+add_executable(gpd_realsense src/gpd_realsense_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -184,10 +185,21 @@ add_dependencies(${PROJECT_NAME}
 								 Eigen3::Eigen
 )
 
+
+
+
 ## Specify libraries to link a library or executable target against
+target_link_libraries(gpd_realsense
+  ${catkin_LIBRARIES}
+	${gpd_ros_LIBRARIES}
+	${Eigen3_LIBRARIES}
+	${PCL_LIBRARIES}
+)
+
+
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
-	# ${gpd_ros_LIBRARIES}
+	${gpd_ros_LIBRARIES}
 	${Eigen3_LIBRARIES}
 	${PCL_LIBRARIES}
 )
@@ -208,7 +220,7 @@ target_link_libraries(${PROJECT_NAME}
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-install(TARGETS ${PROJECT_NAME}
+install(TARGETS gpd_realsense ${PROJECT_NAME}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

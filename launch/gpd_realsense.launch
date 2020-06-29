@@ -1,0 +1,15 @@
+<launch>
+  <!-- requests graps and commands robot to move -->
+  <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen"/>
+
+  <!-- gpd ros wrapper -->
+  <!-- <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/> -->
+
+  <!-- Realsense ROS-->
+  <!-- <include file ="$(find realsense2_camera)/launch/rs_camera.launch">
+    <arg name="device_type" value="d435"/>
+    <arg name="filters" value="pointcloud"/>
+  </include> -->
+
+  <node name="rviz" pkg="rviz" type="rviz" required="false" args="-d $(find gpd_simulation)/config/gpd_realsense.rviz"/>
+</launch>
