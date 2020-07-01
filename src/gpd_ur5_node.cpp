@@ -1,5 +1,5 @@
 /**
-* @file gpd_simulation_node.cpp
+* @file gpd_ur5_node.cpp
 * @author Boston Cleek
 * @date 28 Jun 2020
 * @brief Uses grasp pose determination to select a grasp candidate
@@ -539,7 +539,7 @@ geometry_msgs::Pose postGrasp(const geometry_msgs::Pose &grasp, const geometry_m
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "gpd_sim");
+  ros::init(argc, argv, "gpd_ur5");
   ros::NodeHandle nh("~");
   ros::NodeHandle node_handle;
 
