@@ -1,6 +1,6 @@
 <launch>
   <!-- requests graps and commands robot to move -->
-  <node name="gpd_sim" pkg="gpd_simulation" type="gpd_simulation" output="screen"/>
+  <node name="gpd_ur5" pkg="gpd_simulation" type="gpd_ur5" output="screen"/>
 
   <!-- gpd ros wrapper -->
   <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
