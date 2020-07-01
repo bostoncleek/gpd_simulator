@@ -35,7 +35,7 @@ find_package(catkin REQUIRED COMPONENTS
 # find_package(Boost REQUIRED COMPONENTS system)
 
 find_package(Eigen3 3.3 REQUIRED NO_MODULE)
-find_package(PCL REQUIRED)
+find_package(PCL 1.8 REQUIRED)
 add_definitions(${PCL_DEFINITIONS})
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -168,7 +168,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME} src/${PROJECT_NAME}_node.cpp)
+add_executable(gpd_ur5 src/gpd_ur5_node.cpp)
 add_executable(gpd_realsense src/gpd_realsense_node.cpp)
 
 ## Rename C++ executable without prefix
@@ -179,12 +179,18 @@ add_executable(gpd_realsense src/gpd_realsense_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-add_dependencies(${PROJECT_NAME}
+add_dependencies(gpd_ur5
 								 ${${PROJECT_NAME}_EXPORTED_TARGETS}
 								 ${catkin_EXPORTED_TARGETS}
 								 Eigen3::Eigen
 )
 
+
+add_dependencies(gpd_realsense
+								 ${${PROJECT_NAME}_EXPORTED_TARGETS}
+								 ${catkin_EXPORTED_TARGETS}
+								 Eigen3::Eigen
+)
 
 
 
@@ -197,7 +203,7 @@ target_link_libraries(gpd_realsense
 )
 
 
-target_link_libraries(${PROJECT_NAME}
+target_link_libraries(gpd_ur5
   ${catkin_LIBRARIES}
 	${gpd_ros_LIBRARIES}
 	${Eigen3_LIBRARIES}
@@ -220,17 +226,17 @@ target_link_libraries(${PROJECT_NAME}
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
-install(TARGETS gpd_realsense ${PROJECT_NAME}
+install(TARGETS gpd_realsense gpd_ur5
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 ## Mark libraries for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_libraries.html
-install(TARGETS ${PROJECT_NAME}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
-)
+# install(TARGETS ${PROJECT_NAME}
+#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   RUNTIME DESTINATION ${CATKIN_GLOBAL_BIN_DESTINATION}
+# )
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
