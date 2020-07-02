@@ -3,7 +3,7 @@
   <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen"/>
 
   <!-- gpd ros wrapper -->
-  <!-- <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/> -->
+  <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
 
   <!-- Realsense ROS-->
   <!-- <include file ="$(find realsense2_camera)/launch/rs_camera.launch">

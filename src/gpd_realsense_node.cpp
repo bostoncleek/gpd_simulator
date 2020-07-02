@@ -6,8 +6,13 @@
 *        as the input to grasp pose detection to select a grasp candidate
 *
 * @PUBLISHES:
+*   grasp_candidate (visualization_msgs/MarkerArray): best grasp candidate visualization
+*   cloud_stitched (sensor_msgs::PointCloud2): filtered point cloud for GPD
 * @SUBSCRIBES:
+*   camera/depth/color/points (sensor_msgs/PointCloud2): raw point cloud
+*   detect_grasps/clustered_grasps (gpd_ros/GraspConfigList): list of all grasp candidates from GPD
 * @SEERVICES:
+*   request_grasp (std_srvs/Empty): requests grasp candidates and selects current point cloud as the input to GPD
 */
 
 // ROS
@@ -87,6 +92,10 @@ static const auto finger_width = 0.01;
 static const auto hand_height = 0.02;
 
 
+static auto y_max = 0.0;
+static auto y_min = 0.0;
+static auto y_padding = 0.05;
+
 /**
 * @brief Segments objects from table plane
 * @param [out] cloud - Segemented cloud
@@ -148,9 +157,9 @@ void passThroughFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
 {
   pcl::PassThrough<pcl::PointXYZRGB> pass;
   pass.setInputCloud(cloud);
-  pass.setFilterFieldName("z");
+  pass.setFilterFieldName("y");
   // min and max values in z axis to keep
-  pass.setFilterLimits(0.5, 3.0);
+  pass.setFilterLimits(y_min, y_max - y_padding);
   pass.filter(*cloud);
 }
 
@@ -175,9 +184,10 @@ bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Respo
 */
 void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 {
-  // if (cloud_srv_active)
+  if (cloud_srv_active)
   {
     // ROS_INFO("Point cloud selected");
+    ROS_INFO("Frame ID: %s", msg->header.frame_id.c_str());
 
     // use RANSAC to filter points above table
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -186,31 +196,34 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
     pcl::fromROSMsg(*msg.get(), *cloud);
     // ROS_INFO("Point cloud size: %lu ", cloud->points.size());
 
-    pcl::PointXYZRGB min_pt, max_pt;
-    pcl::getMinMax3D(*cloud, min_pt, max_pt);
-
-    std::cout << "Pre filter" << std::endl;
-    std::cout << "min x: " << min_pt.x << std::endl;
-    std::cout << "min y: " << min_pt.y << std::endl;
-    std::cout << "min z: " << min_pt.z << std::endl<<std::endl;
-
-    std::cout << "max x: " << max_pt.x << std::endl;
-    std::cout << "max y: " << max_pt.y << std::endl;
-    std::cout << "max z: " << max_pt.z << std::endl<<std::endl;
+    // pcl::PointXYZRGB min_pt, max_pt;
+    // pcl::getMinMax3D(*cloud, min_pt, max_pt);
+    //
+    // // std::cout << "Pre filter" << std::endl;
+    // // std::cout << "min x: " << min_pt.x << std::endl;
+    // // std::cout << "min y: " << min_pt.y << std::endl;
+    // // std::cout << "min z: " << min_pt.z << std::endl<<std::endl;
+    // //
+    // // std::cout << "max x: " << max_pt.x << std::endl;
+    // // std::cout << "max y: " << max_pt.y << std::endl;
+    // // std::cout << "max z: " << max_pt.z << std::endl<<std::endl;
+    //
+    // y_min = min_pt.y;
+    // y_max = max_pt.y;
 
 
     // remove points bellow a vertical threshold
-    passThroughFilter(cloud);
+    // passThroughFilter(cloud);
 
 
     // segment objects from table
-    // removeTable(cloud);
-    // ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
-    //
-    // if (cloud->points.empty())
-    // {
-    //   ROS_ERROR("Cloud empty");
-    // }
+    removeTable(cloud);
+    ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
+
+    if (cloud->points.empty())
+    {
+      ROS_ERROR("Cloud empty");
+    }
 
     // covert back to ROS msg
     pcl::toROSMsg(*cloud, cloud_msg);

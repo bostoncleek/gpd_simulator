@@ -157,9 +157,7 @@ void removeTable(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
 
   // pcl::visualization::CloudViewer viewer ("Cloud");
   // viewer.showCloud (cloud);
-  // while (!viewer.wasStopped ())
-  // {
-  // }
+  // while (!viewer.wasStopped ()) {}
 }
 
 
@@ -274,7 +272,7 @@ void graspCallBack(const gpd_ros::GraspConfigList::ConstPtr &msg)
   grasp_candidate.score = msg->grasps.at(0).score.data;
   grasp_candidate.frame_id = grasp_pose_robot.header.frame_id;
 
-  std::cout << "Pose of grasp in base_link frame: " << grasp_pose_robot << std::endl;
+  std::cout << "Pose of grasp frame: " << grasp_pose_robot << std::endl;
   ROS_INFO_NAMED("GPD", "Required gripper width: %f", grasp_candidate.width);
 
   grasp_selected = true;
@@ -554,7 +552,7 @@ int main(int argc, char** argv)
 
   ros::ServiceServer cloud_serv = node_handle.advertiseService("request_grasp", requestGraspCloudCallBack);
 
-  ROS_INFO("Successfully launch gpd_sim node");
+  ROS_INFO("Successfully launch gpd_ur5 node");
 
   cloud_srv_active = false;
   cloud_msg_received = false;

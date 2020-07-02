@@ -3,6 +3,8 @@ project(gpd_simulation)
 
 # add compile options
 add_compile_options(-Wall -Wextra -Wno-psabi -fdiagnostics-color=always)
+# add_compile_options(-Wall -Wextra -Wno-psabi)
+
 
 # Compile as C++14
 set(CMAKE_CXX_STANDARD 14)
