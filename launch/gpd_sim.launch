@@ -1,9 +1,11 @@
 <launch>
+  <rosparam command="load" file="$(find gpd_simulation)/config/moveit_cpp.yaml" />
+
   <!-- requests graps and commands robot to move -->
   <node name="gpd_ur5" pkg="gpd_simulation" type="gpd_ur5" output="screen"/>
 
   <!-- gpd ros wrapper -->
-  <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
+  <!-- <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/> -->
 
   <!-- load model into parameter server -->
   <param name="cracker_box_description" command="$(find xacro)/xacro '$(find gpd_simulation)/urdf/cracker_box.urdf.xacro'"/>

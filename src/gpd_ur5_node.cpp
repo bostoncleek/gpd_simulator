@@ -27,6 +27,11 @@
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
 
+
+// MoveitCpp
+#include <moveit/moveit_cpp/moveit_cpp.h>
+#include <moveit/moveit_cpp/planning_component.h>
+
 // MoveIt
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
@@ -36,10 +41,12 @@
 #include <moveit_msgs/CollisionObject.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
+
 // C++
 #include <vector>
 #include <iostream>
 #include <string>
+#include <memory>
 
 // PCL
 #include <pcl/common/common.h>
@@ -538,8 +545,8 @@ geometry_msgs::Pose postGrasp(const geometry_msgs::Pose &grasp, const geometry_m
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "gpd_ur5");
-  ros::NodeHandle nh("~");
   ros::NodeHandle node_handle;
+  ros::NodeHandle nh("~");
 
   ros::Subscriber cloud_sub = node_handle.subscribe("camera/depth/points", 1, cloudCallBack);
   // ros::Subscriber cloud_sub = node_handle.subscribe("depth_camera/depth/points", 1, cloudCallBack);
@@ -559,7 +566,7 @@ int main(int argc, char** argv)
   grasp_selected = false;
 
   // Required
-  ros::AsyncSpinner spinner(1);
+  ros::AsyncSpinner spinner(4);
   spinner.start();
 
   // Move group interface
@@ -567,12 +574,19 @@ int main(int argc, char** argv)
   static const std::string POSE_REF_FRAME = "base_link";
   static const std::string END_EFFECTOR_LINK = "ee_link";
 
-  moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
-  move_group.setPlanningTime(60.0);
-  // move_group.setNumPlanningAttempts(2);
 
-  move_group.setEndEffectorLink(END_EFFECTOR_LINK);
-  move_group.setPoseReferenceFrame(POSE_REF_FRAME);
+  /* Otherwise robot with zeros joint_states */
+  ros::Duration(1.0).sleep();
+
+
+  auto moveit_cpp_ptr = std::make_shared<moveit::planning_interface::MoveItCpp>(node_handle);
+
+  auto planning_components =
+      std::make_shared<moveit::planning_interface::PlanningComponent>(PLANNING_GROUP, moveit_cpp_ptr);
+
+  auto robot_model_ptr = moveit_cpp_ptr->getRobotModel();
+  auto robot_start_state = planning_components->getStartState();
+  auto joint_model_group_ptr = robot_model_ptr->getJointModelGroup(PLANNING_GROUP);
 
 
   // Setup visualization
@@ -583,172 +597,169 @@ int main(int argc, char** argv)
 
   Eigen::Isometry3d text_pose = Eigen::Isometry3d::Identity();
   text_pose.translation().z() = 1.75;
-  visual_tools.publishText(text_pose, "MoveGroupInterface Demo", rvt::WHITE, rvt::XLARGE);
+  visual_tools.publishText(text_pose, "GPD Demo", rvt::WHITE, rvt::XLARGE);
 
   visual_tools.trigger();
 
-  // Reference frame for this robot.
-  ROS_INFO_NAMED("GPD", "Planning frame: %s", move_group.getPlanningFrame().c_str());
-
-  // End-effector link for this group.
-  ROS_INFO_NAMED("GPD", "End effector link: %s", move_group.getEndEffectorLink().c_str());
-
-  // List of all the groups in the robot:
-  ROS_INFO_NAMED("GPD", "Available Planning Groups:");
-  std::copy(move_group.getJointModelGroupNames().begin(), move_group.getJointModelGroupNames().end(),
-            std::ostream_iterator<std::string>(std::cout, ", "));
+  // Set the start state of the plan to the current state of the robot
+  planning_components->setStartStateToCurrentState();
 
 
-  ROS_INFO_NAMED("GPD", "Pose reference frame: %s", move_group.getPoseReferenceFrame().c_str());
-  ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
+  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan");
 
 
-  // Add the cracker box to the planning scene
-  moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
-  addCollisionBox(planning_scene_interface);
+  // // Add the cracker box to the planning scene
+  // moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
+  // addCollisionBox(planning_scene_interface);
 
 
-  // Need transform between the robot and the camera optical link
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
-  try
-  {
-    ROS_INFO("Looking up transform between base_link and camera_rgb_optical_frame...");
-    t_stamped_base_opt = tfBuffer.lookupTransform("base_link", "camera_rgb_optical_frame", ros::Time(2.0));
-  }
-
-  catch (tf2::TransformException &ex)
-  {
-    ROS_WARN("%s", ex.what());
-    ROS_ERROR("No transform between base_link and camera_rgb_optical_frame found");
-    ros::shutdown();
-  }
-
-
-
-  ROS_INFO("Waiting for grasp candidate... ");
-  while(node_handle.ok())
-  {
-    ros::spinOnce();
-
-    if (cloud_msg_received)
-    {
-      cloud_pub.publish(cloud_msg);
-      cloud_msg_received = false;
-    }
-
-    if (grasp_selected)
-    {
-      visualization_msgs::MarkerArray marker_array;
-      visualizeGraspCandidate(marker_array);
-      grasp_viz_pub.publish(marker_array);
-      grasp_selected = false;
-      break;
-    }
-  }
+  // // Need transform between the robot and the camera optical link
+  // tf2_ros::Buffer tfBuffer;
+  // tf2_ros::TransformListener tfListener(tfBuffer);
+  //
+  // try
+  // {
+  //   ROS_INFO("Looking up transform between base_link and camera_rgb_optical_frame...");
+  //   t_stamped_base_opt = tfBuffer.lookupTransform("base_link", "camera_rgb_optical_frame", ros::Time(2.0));
+  // }
+  //
+  // catch (tf2::TransformException &ex)
+  // {
+  //   ROS_WARN("%s", ex.what());
+  //   ROS_ERROR("No transform between base_link and camera_rgb_optical_frame found");
+  //   ros::shutdown();
+  // }
+  //
+  //
+  //
+  // ROS_INFO("Waiting for grasp candidate... ");
+  // while(node_handle.ok())
+  // {
+  //   ros::spinOnce();
+  //
+  //   if (cloud_msg_received)
+  //   {
+  //     cloud_pub.publish(cloud_msg);
+  //     cloud_msg_received = false;
+  //   }
+  //
+  //   if (grasp_selected)
+  //   {
+  //     visualization_msgs::MarkerArray marker_array;
+  //     visualizeGraspCandidate(marker_array);
+  //     grasp_viz_pub.publish(marker_array);
+  //     grasp_selected = false;
+  //     break;
+  //   }
+  // }
 
 
   /////////////////////////////////////////////////////
   // Hard code goal for testing (Previous result from GPD)
-  // grasp_pose_robot.header.frame_id = "base_link";
-  // grasp_pose_robot.pose.position.x = 0.622204;
-  // grasp_pose_robot.pose.position.y = -0.038441;
-  // grasp_pose_robot.pose.position.z = 0.105954;
-  //
-  // grasp_pose_robot.pose.orientation.x = 0.00222623;
-  // grasp_pose_robot.pose.orientation.y = -0.00977791;
-  // grasp_pose_robot.pose.orientation.z = 0.255572;
-  // grasp_pose_robot.pose.orientation.w = 0.966738;
-  //
-  // tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
-  // grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
+  grasp_pose_robot.header.frame_id = "base_link";
+  grasp_pose_robot.pose.position.x = 0.622204;
+  grasp_pose_robot.pose.position.y = -0.038441;
+  grasp_pose_robot.pose.position.z = 0.105954;
+
+  grasp_pose_robot.pose.orientation.x = 0.00222623;
+  grasp_pose_robot.pose.orientation.y = -0.00977791;
+  grasp_pose_robot.pose.orientation.z = 0.255572;
+  grasp_pose_robot.pose.orientation.w = 0.966738;
+
+  tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
+  grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
   /////////////////////////////////////////////////////
+
+  // call the PlanningComponents to compute the pla
+  planning_components->setGoal(grasp_pose_robot, "base_link");
+  auto plan_solution = planning_components->plan();
+
+  moveit_cpp_ptr->execute(PLANNING_GROUP, plan_solution.trajectory);
 
 
   /////////////////////////////////////////////////////
   // Publish approach vector
-  visualization_msgs::Marker marker;
-  marker.header.frame_id = "base_link";
-  marker.header.stamp = ros::Time();
-  marker.ns = "approach";
-  marker.id = 0;
-  marker.type = visualization_msgs::Marker::ARROW;
-  marker.action = visualization_msgs::Marker::ADD;
-  marker.pose = grasp_pose_robot.pose;
-  marker.lifetime = ros::Duration(20);
-
-  marker.scale.x = 0.1;
-  marker.scale.y = 0.01;
-  marker.scale.z = 0.01;
-
-  marker.color.a = 1.0;
-  marker.color.r = 1.0;
-  marker.color.g = 0.0;
-  marker.color.b = 0.0;
-
-  grasp_approach_pub.publish(marker);
+  // visualization_msgs::Marker marker;
+  // marker.header.frame_id = "base_link";
+  // marker.header.stamp = ros::Time();
+  // marker.ns = "approach";
+  // marker.id = 0;
+  // marker.type = visualization_msgs::Marker::ARROW;
+  // marker.action = visualization_msgs::Marker::ADD;
+  // marker.pose = grasp_pose_robot.pose;
+  // marker.lifetime = ros::Duration(20);
+  //
+  // marker.scale.x = 0.1;
+  // marker.scale.y = 0.01;
+  // marker.scale.z = 0.01;
+  //
+  // marker.color.a = 1.0;
+  // marker.color.r = 1.0;
+  // marker.color.g = 0.0;
+  // marker.color.b = 0.0;
+  //
+  // grasp_approach_pub.publish(marker);
+  // /////////////////////////////////////////////////////
+  //
+  //
+  // /////////////////////////////////////////////////////
+  // // Pick
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
+  //
+  // // Open gripper
+  // trajectory_msgs::JointTrajectory gripper_state_msg;
+  // setGripperState(gripper_state_msg, 0.0);
+  // gripper_cmd_pub.publish(gripper_state_msg);
+  //
+  // // Pre-grasp displacement
+  // geometry_msgs::Pose pre_grasp = preGrasp(0.25);
+  // move_group.setPoseTarget(pre_grasp);
+  // move_group.move();
+  //
+  // geometry_msgs::Pose grasp_goal = graspPose(pre_grasp, 0.1);
+  // move_group.setPoseTarget(grasp_goal);
+  // move_group.move();
+  //
+  // // Close gripper
+  // setGripperState(gripper_state_msg, 0.3);
+  // gripper_cmd_pub.publish(gripper_state_msg);
+  //
+  // // Attach box to gripper
+  // move_group.attachObject("cracker_box");
+  //
+  // // Post-grasp displacement
+  // geometry_msgs::Vector3 direction;
+  // direction.x = 0.0;
+  // direction.y = 0.0;
+  // direction.z = 1.0;
+  // geometry_msgs::Pose post_grasp = postGrasp(grasp_goal, direction, 0.1);
+  //
+  // move_group.setPoseTarget(post_grasp);
+  // move_group.move();
+  // /////////////////////////////////////////////////////
+  //
+  //
+  // /////////////////////////////////////////////////////
+  // // Place
+  // geometry_msgs::Pose place_pose;
+  // place_pose.position.x = 0.0;
+  // place_pose.position.y = -0.40;
+  // place_pose.position.z = 0.3;
+  // place_pose.orientation.w = 1.0;
+  //
+  // move_group.setPoseTarget(place_pose);
+  // move_group.move();
+  //
+  // // Open gripper
+  // setGripperState(gripper_state_msg, 0.0);
+  // gripper_cmd_pub.publish(gripper_state_msg);
+  //
+  // // Detach box to gripper
+  // move_group.detachObject("cracker_box");
   /////////////////////////////////////////////////////
 
-
-  /////////////////////////////////////////////////////
-  // Pick
-  visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
-
-  // Open gripper
-  trajectory_msgs::JointTrajectory gripper_state_msg;
-  setGripperState(gripper_state_msg, 0.0);
-  gripper_cmd_pub.publish(gripper_state_msg);
-
-  // Pre-grasp displacement
-  geometry_msgs::Pose pre_grasp = preGrasp(0.25);
-  move_group.setPoseTarget(pre_grasp);
-  move_group.move();
-
-  geometry_msgs::Pose grasp_goal = graspPose(pre_grasp, 0.1);
-  move_group.setPoseTarget(grasp_goal);
-  move_group.move();
-
-  // Close gripper
-  setGripperState(gripper_state_msg, 0.3);
-  gripper_cmd_pub.publish(gripper_state_msg);
-
-  // Attach box to gripper
-  move_group.attachObject("cracker_box");
-
-  // Post-grasp displacement
-  geometry_msgs::Vector3 direction;
-  direction.x = 0.0;
-  direction.y = 0.0;
-  direction.z = 1.0;
-  geometry_msgs::Pose post_grasp = postGrasp(grasp_goal, direction, 0.1);
-
-  move_group.setPoseTarget(post_grasp);
-  move_group.move();
-  /////////////////////////////////////////////////////
-
-
-  /////////////////////////////////////////////////////
-  // Place
-  geometry_msgs::Pose place_pose;
-  place_pose.position.x = 0.0;
-  place_pose.position.y = -0.40;
-  place_pose.position.z = 0.3;
-  place_pose.orientation.w = 1.0;
-
-  move_group.setPoseTarget(place_pose);
-  move_group.move();
-
-  // Open gripper
-  setGripperState(gripper_state_msg, 0.0);
-  gripper_cmd_pub.publish(gripper_state_msg);
-
-  // Detach box to gripper
-  move_group.detachObject("cracker_box");
-  /////////////////////////////////////////////////////
-
-
-  ros::shutdown();
+  ros::waitForShutdown();
+  // ros::shutdown();
   return 0;
 }
 
