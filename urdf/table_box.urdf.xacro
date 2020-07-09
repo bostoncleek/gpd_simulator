@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<robot name="cracker_box" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+<!-- table -->
+<xacro:property name="tl" value="1.225" />
+<xacro:property name="tw" value="0.77" />
+<xacro:property name="th" value="0.04" />
+
+<!-- box -->
+<xacro:property name="bl" value="0.1" />
+<xacro:property name="bw" value="0.065" />
+<xacro:property name="bh" value="0.04" />
+
+<!-- box center from base link -->
+<xacro:property name="bx" value="0.4" />
+<xacro:property name="by" value="0.0" />
+
+
+<link name="base_link"/>
+
+<link name="table_link" >
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <box size="${tl} ${tw} ${th}" />
+    </geometry>
+    <material name="Red1">
+      <color rgba="1 0 0 0.3"/>
+    </material>
+  </visual>
+</link>
+
+<joint name="base_joint" type="fixed">
+ <parent link="base_link" />
+ <child link="table_link" />
+ <origin xyz="0 0 ${-th/2.0}" rpy="0 0 0" />
+</joint>
+
+
+<link name="box_link" >
+  <visual>
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <box size="${bl} ${bw} ${bh}" />
+    </geometry>
+    <material name="Red2">
+      <color rgba="1 0 0 1"/>
+    </material>
+  </visual>
+</link>
+
+<joint name="box_joint" type="fixed">
+ <parent link="table_link" />
+ <child link="box_link" />
+ <origin xyz="${bx} ${by} ${th/2.0 + bl/2.0}" rpy="0 1.57 1.57" />
+</joint>
+
+
+
+
+</robot>
