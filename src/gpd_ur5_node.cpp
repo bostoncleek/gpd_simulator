@@ -58,10 +58,12 @@
 #include <Eigen/Geometry>
 
 // GPD
-// #include <gpd_ros/CloudSources.h>
-// #include <gpd_ros/CloudSamples.h>
 #include <gpd_ros/GraspConfig.h>
 #include <gpd_ros/GraspConfigList.h>
+
+// Robotiq Gripper msgs
+#include <robotiq_85_msgs/GripperCmd.h>
+#include <robotiq_85_msgs/GripperStat.h>
 
 
 /**
@@ -99,6 +101,7 @@ static Gripper grasp_candidate;                                 // best grasp ca
 static bool cloud_srv_active;                                   // request grasps status
 static bool cloud_msg_received;                                 // point cloud message received status
 static bool grasp_selected;                                     // publish selected grasp
+static bool gripper_ready;                                      // robotiq gripper ready
 
 
 // TODO read params in through server
@@ -276,6 +279,20 @@ void graspCallBack(const gpd_ros::GraspConfigList::ConstPtr &msg)
   ROS_INFO_NAMED("GPD", "Required gripper width: %f", grasp_candidate.width);
 
   grasp_selected = true;
+}
+
+
+/**
+* @brief Call back for robotiq gripper status
+* @param msg - current status of gripper
+* @details set gripper status to true if hardware is ready
+*/
+void robotiqCallBack(const robotiq_85_msgs::GripperStat::ConstPtr &msg)
+{
+  if (msg->is_ready)
+  {
+    gripper_ready = true;
+  }
 }
 
 
@@ -541,22 +558,33 @@ int main(int argc, char** argv)
   ros::NodeHandle nh("~");
   ros::NodeHandle node_handle;
 
+
   ros::Subscriber cloud_sub = node_handle.subscribe("camera/depth/points", 1, cloudCallBack);
-  // ros::Subscriber cloud_sub = node_handle.subscribe("depth_camera/depth/points", 1, cloudCallBack);
   ros::Subscriber grasp_sub = node_handle.subscribe("detect_grasps/clustered_grasps", 1, graspCallBack);
+  ros::Subscriber robotiq_stat_sub = node_handle.subscribe("/gripper/stat", 1, robotiqCallBack);
 
   ros::Publisher grasp_viz_pub = node_handle.advertise<visualization_msgs::MarkerArray>("grasp_candidate", 1);
   ros::Publisher grasp_approach_pub = node_handle.advertise<visualization_msgs::Marker>("grasp_approach", 1);
   ros::Publisher cloud_pub = node_handle.advertise<sensor_msgs::PointCloud2>("cloud_stitched", 1);
-  ros::Publisher gripper_cmd_pub = node_handle.advertise<trajectory_msgs::JointTrajectory>("/gripper/command", 1);
+  ros::Publisher gripper_cmd_pub = node_handle.advertise<trajectory_msgs::JointTrajectory>("/gripper/command", 1);    // gazebo
+  ros::Publisher robotiq_cmd_pub = node_handle.advertise<robotiq_85_msgs::GripperCmd>("/gripper/cmd", 1);             // hardware
 
   ros::ServiceServer cloud_serv = node_handle.advertiseService("request_grasp", requestGraspCloudCallBack);
 
   ROS_INFO("Successfully launch gpd_ur5 node");
 
+  // Wait for gripper status
+  ROS_INFO("Waiting for Robotiq gripper...");
+  while (!gripper_ready) { ros::spinOnce(); }
+  ROS_INFO("Robotiq gripper is ready");
+
+
+
+  // No msgs or services have been called
   cloud_srv_active = false;
   cloud_msg_received = false;
   grasp_selected = false;
+  gripper_ready = false;
 
   // Required
   ros::AsyncSpinner spinner(1);
@@ -603,6 +631,31 @@ int main(int argc, char** argv)
   ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
 
 
+  // ////////////////////////////////////////////////////////////////
+  // // Test gripper open/close
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to close");
+  //
+  // trajectory_msgs::JointTrajectory gripper_state_msg;   // gripper sim msg
+  // robotiq_85_msgs::GripperCmd gripper_cmd;              // gripper hardware msg
+  //
+  // setGripperState(gripper_state_msg, 0.8);
+  // gripper_cmd_pub.publish(gripper_state_msg);
+  //
+  // gripper_cmd.position = 0.0;
+  // robotiq_cmd_pub.publish(gripper_cmd);
+  //
+  //
+  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to open");
+  //
+  // setGripperState(gripper_state_msg, 0.0);
+  // gripper_cmd_pub.publish(gripper_state_msg);
+  //
+  // gripper_cmd.position = 0.8;
+  // robotiq_cmd_pub.publish(gripper_cmd);
+  // ////////////////////////////////////////////////////////////////
+
+
+
   // Add the cracker box to the planning scene
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
   addCollisionBox(planning_scene_interface);
@@ -611,6 +664,9 @@ int main(int argc, char** argv)
   // Need transform between the robot and the camera optical link
   tf2_ros::Buffer tfBuffer;
   tf2_ros::TransformListener tfListener(tfBuffer);
+
+
+  ros::Duration(1.0).sleep();
 
   try
   {
@@ -695,10 +751,16 @@ int main(int argc, char** argv)
   // Pick
   visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
 
+  trajectory_msgs::JointTrajectory gripper_state_msg;   // gripper sim msg
+  robotiq_85_msgs::GripperCmd gripper_cmd;              // gripper hardware msg
+
   // Open gripper
-  trajectory_msgs::JointTrajectory gripper_state_msg;
   setGripperState(gripper_state_msg, 0.0);
   gripper_cmd_pub.publish(gripper_state_msg);
+
+  gripper_cmd.position = 0.8;
+  robotiq_cmd_pub.publish(gripper_cmd);
+
 
   // Pre-grasp displacement
   geometry_msgs::Pose pre_grasp = preGrasp(0.25);
@@ -712,6 +774,10 @@ int main(int argc, char** argv)
   // Close gripper
   setGripperState(gripper_state_msg, 0.3);
   gripper_cmd_pub.publish(gripper_state_msg);
+
+  gripper_cmd.position = 0.0;
+  robotiq_cmd_pub.publish(gripper_cmd);
+
 
   // Attach box to gripper
   move_group.attachObject("cracker_box");
@@ -730,21 +796,21 @@ int main(int argc, char** argv)
 
   /////////////////////////////////////////////////////
   // Place
-  geometry_msgs::Pose place_pose;
-  place_pose.position.x = 0.0;
-  place_pose.position.y = -0.40;
-  place_pose.position.z = 0.3;
-  place_pose.orientation.w = 1.0;
-
-  move_group.setPoseTarget(place_pose);
-  move_group.move();
-
-  // Open gripper
-  setGripperState(gripper_state_msg, 0.0);
-  gripper_cmd_pub.publish(gripper_state_msg);
-
-  // Detach box to gripper
-  move_group.detachObject("cracker_box");
+  // geometry_msgs::Pose place_pose;
+  // place_pose.position.x = 0.0;
+  // place_pose.position.y = -0.40;
+  // place_pose.position.z = 0.3;
+  // place_pose.orientation.w = 1.0;
+  //
+  // move_group.setPoseTarget(place_pose);
+  // move_group.move();
+  //
+  // // Open gripper
+  // setGripperState(gripper_state_msg, 0.0);
+  // gripper_cmd_pub.publish(gripper_state_msg);
+  //
+  // // Detach box to gripper
+  // move_group.detachObject("cracker_box");
   /////////////////////////////////////////////////////
 
 

@@ -22,6 +22,7 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <std_srvs/Empty.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/point_cloud.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <visualization_msgs/Marker.h>
@@ -457,33 +458,119 @@ int main(int argc, char** argv)
   cloud_msg_received = false;
   grasp_selected = false;
 
-  // assume camera_depth_optical_frame is at base_link
-  std::string frame_id = "camera_depth_optical_frame";
-  grasp_candidate.frame_id = frame_id;
-  t_stamped_base_opt.header.frame_id = frame_id;
-  t_stamped_base_opt.child_frame_id = frame_id;
-  t_stamped_base_opt.transform.rotation.w = 1.0;
+
+  // Need transform between the robot and the camera optical link
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tfListener(tfBuffer);
+
+  // point cloud is in frame: camera_rgb_optical_frame
+  // need transform from base_link to camera_depth_optical_frame
+  // to limit bounds of point cloud
+
+  geometry_msgs::TransformStamped T_base_to_optical;
+
+  // wait for things to get up and running
+  ros::Duration(1.0).sleep();
 
 
-  ROS_INFO("Waiting for grasp candidate... ");
-  while(node_handle.ok())
+  try
   {
-    ros::spinOnce();
-
-    if (cloud_msg_received)
-    {
-      cloud_pub.publish(cloud_msg);
-      cloud_msg_received = false;
-    }
-
-    if (grasp_selected)
-    {
-      visualization_msgs::MarkerArray marker_array;
-      visualizeGraspCandidate(marker_array);
-      grasp_viz_pub.publish(marker_array);
-      grasp_selected = false;
-    }
+    ROS_INFO("Looking up transform between base_link and camera_depth_optical_frame...");
+    T_base_to_optical = tfBuffer.lookupTransform("base_link", "camera_depth_optical_frame", ros::Time(2.0));
   }
+
+  catch (tf2::TransformException &ex)
+  {
+    ROS_WARN("%s", ex.what());
+    ROS_ERROR("No transform between base_link and camera_depth_optical_frame found");
+  }
+
+
+
+
+  // // transform from camera_link to camera_rgb_optical_frame
+  // geometry_msgs::TransformStamped T_camera_to_optical;
+  //
+  // // transform from base_link to camera_link
+  // geometry_msgs::TransformStamped T_base_to_camera;
+  //
+  //
+  // // wait for things to get up and running
+  // ros::Duration(1.0).sleep();
+  //
+  //
+  // try
+  // {
+  //   ROS_INFO("Looking up transform between base_link and camera_link...");
+  //   T_base_to_camera = tfBuffer.lookupTransform("base_link", "camera_link", ros::Time(2.0));
+  // }
+  //
+  // catch (tf2::TransformException &ex)
+  // {
+  //   ROS_WARN("%s", ex.what());
+  //   ROS_ERROR("No transform between base_link and camera_link found");
+  // }
+  //
+  // try
+  // {
+  //   ROS_INFO("Looking up transform between camera_link and camera_depth_optical_frame...");
+  //   T_camera_to_optical = tfBuffer.lookupTransform("camera_link", "camera_depth_optical_frame", ros::Time(2.0));
+  // }
+  //
+  // catch (tf2::TransformException &ex)
+  // {
+  //   ROS_WARN("%s", ex.what());
+  //   ROS_ERROR("No transform between camera_link and camera_depth_optical_frame found");
+  // }
+  //
+  // // transform from base_link to camera_depth_optical_frame
+  // geometry_msgs::TransformStamped T_base_to_optical;
+  //
+  // // T_base_to_optical = T_base_to_camera * T_camera_to_optical
+  // // tf2::doTransform(T_base_to_camera, T_base_to_optical, T_camera_to_optical);
+  // tf2::doTransform(T_camera_to_optical, T_base_to_optical, T_base_to_camera);
+  //
+  //
+  //
+  // std::cout << "T_base_to_camera" << std::endl;
+  // std::cout << T_base_to_camera << std::endl;
+  //
+  // std::cout << "T_camera_to_optical" << std::endl;
+  // std::cout << T_camera_to_optical << std::endl;
+  //
+  std::cout << "T_base_to_optical" << std::endl;
+  std::cout << T_base_to_optical << std::endl;
+
+
+
+  // // assume camera_depth_optical_frame is at base_link
+  // std::string frame_id = "camera_depth_optical_frame";
+  // grasp_candidate.frame_id = frame_id;
+  // t_stamped_base_opt.header.frame_id = frame_id;
+  // t_stamped_base_opt.child_frame_id = frame_id;
+  // t_stamped_base_opt.transform.rotation.w = 1.0;
+  //
+  //
+  // ROS_INFO("Waiting for grasp candidate... ");
+  // while(node_handle.ok())
+  // {
+  //   ros::spinOnce();
+  //
+  //   if (cloud_msg_received)
+  //   {
+  //     cloud_pub.publish(cloud_msg);
+  //     cloud_msg_received = false;
+  //   }
+  //
+  //   if (grasp_selected)
+  //   {
+  //     visualization_msgs::MarkerArray marker_array;
+  //     visualizeGraspCandidate(marker_array);
+  //     grasp_viz_pub.publish(marker_array);
+  //     grasp_selected = false;
+  //   }
+  // }
+
   return 0;
 }
 

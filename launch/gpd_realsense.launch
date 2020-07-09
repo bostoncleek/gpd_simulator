@@ -3,13 +3,21 @@
   <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen"/>
 
   <!-- gpd ros wrapper -->
-  <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
+  <!-- <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/> -->
 
   <!-- Realsense ROS-->
   <!-- <include file ="$(find realsense2_camera)/launch/rs_camera.launch">
     <arg name="device_type" value="d435"/>
     <arg name="filters" value="pointcloud"/>
   </include> -->
+
+  <!-- tf from the base link to the camera link -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="basetocamera" args="-0.085 -0.125 0.61 0 0.7853 0 base_link camera_link"/>
+
+  <!-- table/box for tuning transform -->
+  <param name="robot_description" command="$(find xacro)/xacro '$(find gpd_simulation)/urdf/table_box.urdf.xacro'"/>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"/>
 
   <node name="rviz" pkg="rviz" type="rviz" required="false" args="-d $(find gpd_simulation)/config/gpd_realsense.rviz"/>
 </launch>

@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
 	gazebo_ros
 	geometry_msgs
 	gpd_ros
+	robotiq_85_msgs
   roscpp
 	moveit_core
 	moveit_ros_planning
