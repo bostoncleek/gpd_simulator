@@ -322,16 +322,18 @@ bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Respo
 */
 void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 {
-  // // Convert transform from base_link to optical frame to a eigen matrix
-  // Eigen::Matrix4f eigen_transform_base_optical = tf2::transformToEigen(t_stamped_base_opt).matrix().cast<float>();
-  //
-  // // transfom point cloud into frame of base_link
-  // transformPointCloud(eigen_transform_base_optical, *msg, cloud_msg);
-  // cloud_msg.header.frame_id = t_stamped_base_opt.header.frame_id;
+  // Convert transform from base_link to optical frame to a eigen matrix
+  Eigen::Matrix4f eigen_transform_base_optical = tf2::transformToEigen(t_stamped_base_opt).matrix().cast<float>();
+
+  // transfom point cloud into frame of base_link
+  transformPointCloud(eigen_transform_base_optical, *msg.get(), cloud_msg);
+  cloud_msg.header.frame_id = t_stamped_base_opt.header.frame_id;
+
 
   // convert from ROS msg to a point cloud
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-  pcl::fromROSMsg(*msg.get(), *cloud);
+
+  pcl::fromROSMsg(cloud_msg, *cloud);
   ROS_INFO("Point cloud size: %lu ", cloud->points.size());
 
 
@@ -349,7 +351,7 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 
 
   // remove points bellow a vertical threshold
-  // passThroughFilter(cloud);
+  passThroughFilter(cloud);
 
 
   // segment objects from table
