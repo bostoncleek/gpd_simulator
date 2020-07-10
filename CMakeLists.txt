@@ -26,9 +26,11 @@ find_package(catkin REQUIRED COMPONENTS
 	moveit_ros_planning
 	moveit_ros_planning_interface
 	moveit_visual_tools
+	# pcl_ros
 	sensor_msgs
 	std_msgs
 	std_srvs
+	tf
 	tf2_geometry_msgs
 	tf2_ros
 	visualization_msgs
@@ -136,9 +138,11 @@ catkin_package(
 	moveit_ros_planning
 	moveit_ros_planning_interface
 	moveit_visual_tools
+	# pcl_ros
 	sensor_msgs
 	std_msgs
 	std_srvs
+	tf
 	tf2_geometry_msgs
 	tf2_ros
 	visualization_msgs

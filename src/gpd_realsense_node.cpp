@@ -22,8 +22,14 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <std_srvs/Empty.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
+// #include <pcl_ros/point_cloud.h>
+// #include <pcl_ros/impl/transfoms.hpp>
+// #include <tf/transform_listener.h>
+// #include <pcl_ros/transforms.h>
+// #include <tf/transform_datatypes.h>
 #include <tf2_ros/transform_listener.h>
+#include <tf2/LinearMath/Transform.h>
+#include <tf2_eigen/tf2_eigen.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -32,6 +38,9 @@
 #include <vector>
 #include <iostream>
 #include <string>
+#include <cmath>
+#include <limits>
+
 
 // PCL
 #include <pcl/common/common.h>
@@ -45,6 +54,8 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/visualization/cloud_viewer.h>
+
+
 
 // GPD
 #include <gpd_ros/GraspConfig.h>
@@ -96,6 +107,119 @@ static const auto hand_height = 0.02;
 static auto y_max = 0.0;
 static auto y_min = 0.0;
 static auto y_padding = 0.05;
+
+
+
+/**
+   * Source code: pcl_ros/transfoms.h (unable to compile both pcl_ros and PCL)
+   * \brief Transform a sensor_msgs::PointCloud2 dataset using an Eigen 4x4 matrix.
+   * \param transform the transformation to use on the points
+   * \param in the input PointCloud2 dataset
+   * \param out the resultant transformed PointCloud2 dataset
+   */
+void transformPointCloud(const Eigen::Matrix4f &transform, const sensor_msgs::PointCloud2 &in, sensor_msgs::PointCloud2 &out)
+{
+  // Get X-Y-Z indices
+  int x_idx = pcl::getFieldIndex (in, "x");
+  int y_idx = pcl::getFieldIndex (in, "y");
+  int z_idx = pcl::getFieldIndex (in, "z");
+
+  if (x_idx == -1 || y_idx == -1 || z_idx == -1)
+  {
+    ROS_ERROR ("Input dataset has no X-Y-Z coordinates! Cannot convert to Eigen format.");
+    return;
+  }
+
+  if (in.fields[x_idx].datatype != sensor_msgs::PointField::FLOAT32 ||
+      in.fields[y_idx].datatype != sensor_msgs::PointField::FLOAT32 ||
+      in.fields[z_idx].datatype != sensor_msgs::PointField::FLOAT32)
+  {
+    ROS_ERROR ("X-Y-Z coordinates not floats. Currently only floats are supported.");
+    return;
+  }
+
+  // Check if distance is available
+  int dist_idx = pcl::getFieldIndex (in, "distance");
+
+  // Copy the other data
+  if (&in != &out)
+  {
+    out.header = in.header;
+    out.height = in.height;
+    out.width  = in.width;
+    out.fields = in.fields;
+    out.is_bigendian = in.is_bigendian;
+    out.point_step   = in.point_step;
+    out.row_step     = in.row_step;
+    out.is_dense     = in.is_dense;
+    out.data.resize (in.data.size ());
+    // Copy everything as it's faster than copying individual elements
+    memcpy (&out.data[0], &in.data[0], in.data.size ());
+  }
+
+  Eigen::Array4i xyz_offset (in.fields[x_idx].offset, in.fields[y_idx].offset, in.fields[z_idx].offset, 0);
+
+  for (size_t i = 0; i < in.width * in.height; ++i)
+  {
+    Eigen::Vector4f pt (*(float*)&in.data[xyz_offset[0]], *(float*)&in.data[xyz_offset[1]], *(float*)&in.data[xyz_offset[2]], 1);
+    Eigen::Vector4f pt_out;
+
+    bool max_range_point = false;
+    int distance_ptr_offset = (dist_idx < 0 ? -1 : (i*in.point_step + in.fields[dist_idx].offset)); // If dist_idx is negative, it must not be used as an index
+    float* distance_ptr = (dist_idx < 0 ? NULL : (float*)(&in.data[distance_ptr_offset]));
+    if (!std::isfinite (pt[0]) || !std::isfinite (pt[1]) || !std::isfinite (pt[2]))
+    {
+      if (distance_ptr==NULL || !std::isfinite(*distance_ptr))  // Invalid point
+      {
+        pt_out = pt;
+      }
+      else  // max range point
+      {
+        pt[0] = *distance_ptr;  // Replace x with the x value saved in distance
+        pt_out = transform * pt;
+        max_range_point = true;
+        //std::cout << pt[0]<<","<<pt[1]<<","<<pt[2]<<" => "<<pt_out[0]<<","<<pt_out[1]<<","<<pt_out[2]<<"\n";
+      }
+    }
+    else
+    {
+      pt_out = transform * pt;
+    }
+
+    if (max_range_point)
+    {
+      // Save x value in distance again
+      *(float*)(&out.data[distance_ptr_offset]) = pt_out[0];
+      pt_out[0] = std::numeric_limits<float>::quiet_NaN();
+    }
+
+    memcpy (&out.data[xyz_offset[0]], &pt_out[0], sizeof (float));
+    memcpy (&out.data[xyz_offset[1]], &pt_out[1], sizeof (float));
+    memcpy (&out.data[xyz_offset[2]], &pt_out[2], sizeof (float));
+
+
+    xyz_offset += in.point_step;
+  }
+
+  // Check if the viewpoint information is present
+  int vp_idx = pcl::getFieldIndex (in, "vp_x");
+  if (vp_idx != -1)
+  {
+    // Transform the viewpoint info too
+    for (size_t i = 0; i < out.width * out.height; ++i)
+    {
+      float *pstep = (float*)&out.data[i * out.point_step + out.fields[vp_idx].offset];
+      // Assume vp_x, vp_y, vp_z are consecutive
+      Eigen::Vector4f vp_in (pstep[0], pstep[1], pstep[2], 1);
+      Eigen::Vector4f vp_out = transform * vp_in;
+
+      pstep[0] = vp_out[0];
+      pstep[1] = vp_out[1];
+      pstep[2] = vp_out[2];
+    }
+  }
+}
+
 
 /**
 * @brief Segments objects from table plane
@@ -185,16 +309,47 @@ bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Respo
 */
 void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 {
-  if (cloud_srv_active)
+  // if (cloud_srv_active)
   {
     // ROS_INFO("Point cloud selected");
-    ROS_INFO("Frame ID: %s", msg->header.frame_id.c_str());
+    // ROS_INFO("Frame ID: %s", msg->header.frame_id.c_str());
 
-    // use RANSAC to filter points above table
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
+    // Convert transform from base_link to optical frame to a eigen matrix
+    Eigen::Matrix4f eigen_transform_base_optical = tf2::transformToEigen(t_stamped_base_opt).matrix().cast<float>();
+
+
+    // transfom point cloud into frame of base_link
+    transformPointCloud(eigen_transform_base_optical, *msg, cloud_msg);
+    cloud_msg.header.frame_id = t_stamped_base_opt.header.frame_id;
+
+
+
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in(new pcl::PointCloud<pcl::PointXYZRGB>);
+    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_out(new pcl::PointCloud<pcl::PointXYZRGB>);
+    //
+    //
     // // convert from ROS msg to a point cloud
-    pcl::fromROSMsg(*msg.get(), *cloud);
+    // pcl::fromROSMsg(*msg.get(), *cloud_in);
+
+
+    // pcl_ros::transformPointCloud(t_stamped_base_opt.header.frame_id, t_stamped_base_opt, *msg, cloud_msg);
+
+
+
+
+    // Annoying conversion
+    // Eigen::Affine3d affine_transform;
+    // tf::transformEigenToMsg(affine_transform, t_stamped_base_opt.transform);
+    // Eigen::Matrix4f transform = affine_transform.matrix().cast<float>();
+    //
+    // // Apply transform to cloud, now in base_link frame
+    // pcl_ros::transformPointCloud(transform, *msg, cloud_msg);
+
+
+    // pcl_ros::transformPointCloudWithNormals(*cloud_in, *cloud_out, t_stamped_base_opt.transform);
+
+
     // ROS_INFO("Point cloud size: %lu ", cloud->points.size());
 
     // pcl::PointXYZRGB min_pt, max_pt;
@@ -218,16 +373,16 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 
 
     // segment objects from table
-    removeTable(cloud);
-    ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
-
-    if (cloud->points.empty())
-    {
-      ROS_ERROR("Cloud empty");
-    }
-
-    // covert back to ROS msg
-    pcl::toROSMsg(*cloud, cloud_msg);
+    // removeTable(cloud);
+    // ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
+    //
+    // if (cloud->points.empty())
+    // {
+    //   ROS_ERROR("Cloud empty");
+    // }
+    //
+    // // covert back to ROS msg
+    // pcl::toROSMsg(*cloud, cloud_msg);
 
 
     cloud_srv_active = false;
@@ -458,25 +613,19 @@ int main(int argc, char** argv)
   cloud_msg_received = false;
   grasp_selected = false;
 
-
-  // Need transform between the robot and the camera optical link
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-
   // point cloud is in frame: camera_rgb_optical_frame
   // need transform from base_link to camera_depth_optical_frame
   // to limit bounds of point cloud
-
-  geometry_msgs::TransformStamped T_base_to_optical;
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tfListener(tfBuffer);
 
   // wait for things to get up and running
   ros::Duration(1.0).sleep();
 
-
   try
   {
     ROS_INFO("Looking up transform between base_link and camera_depth_optical_frame...");
-    T_base_to_optical = tfBuffer.lookupTransform("base_link", "camera_depth_optical_frame", ros::Time(2.0));
+    t_stamped_base_opt = tfBuffer.lookupTransform("base_link", "camera_depth_optical_frame", ros::Time(2.0));
   }
 
   catch (tf2::TransformException &ex)
@@ -486,60 +635,8 @@ int main(int argc, char** argv)
   }
 
 
-
-
-  // // transform from camera_link to camera_rgb_optical_frame
-  // geometry_msgs::TransformStamped T_camera_to_optical;
-  //
-  // // transform from base_link to camera_link
-  // geometry_msgs::TransformStamped T_base_to_camera;
-  //
-  //
-  // // wait for things to get up and running
-  // ros::Duration(1.0).sleep();
-  //
-  //
-  // try
-  // {
-  //   ROS_INFO("Looking up transform between base_link and camera_link...");
-  //   T_base_to_camera = tfBuffer.lookupTransform("base_link", "camera_link", ros::Time(2.0));
-  // }
-  //
-  // catch (tf2::TransformException &ex)
-  // {
-  //   ROS_WARN("%s", ex.what());
-  //   ROS_ERROR("No transform between base_link and camera_link found");
-  // }
-  //
-  // try
-  // {
-  //   ROS_INFO("Looking up transform between camera_link and camera_depth_optical_frame...");
-  //   T_camera_to_optical = tfBuffer.lookupTransform("camera_link", "camera_depth_optical_frame", ros::Time(2.0));
-  // }
-  //
-  // catch (tf2::TransformException &ex)
-  // {
-  //   ROS_WARN("%s", ex.what());
-  //   ROS_ERROR("No transform between camera_link and camera_depth_optical_frame found");
-  // }
-  //
-  // // transform from base_link to camera_depth_optical_frame
-  // geometry_msgs::TransformStamped T_base_to_optical;
-  //
-  // // T_base_to_optical = T_base_to_camera * T_camera_to_optical
-  // // tf2::doTransform(T_base_to_camera, T_base_to_optical, T_camera_to_optical);
-  // tf2::doTransform(T_camera_to_optical, T_base_to_optical, T_base_to_camera);
-  //
-  //
-  //
-  // std::cout << "T_base_to_camera" << std::endl;
-  // std::cout << T_base_to_camera << std::endl;
-  //
-  // std::cout << "T_camera_to_optical" << std::endl;
-  // std::cout << T_camera_to_optical << std::endl;
-  //
-  std::cout << "T_base_to_optical" << std::endl;
-  std::cout << T_base_to_optical << std::endl;
+  std::cout << "t_stamped_base_opt" << std::endl;
+  std::cout << t_stamped_base_opt << std::endl;
 
 
 
@@ -551,25 +648,25 @@ int main(int argc, char** argv)
   // t_stamped_base_opt.transform.rotation.w = 1.0;
   //
   //
-  // ROS_INFO("Waiting for grasp candidate... ");
-  // while(node_handle.ok())
-  // {
-  //   ros::spinOnce();
-  //
-  //   if (cloud_msg_received)
-  //   {
-  //     cloud_pub.publish(cloud_msg);
-  //     cloud_msg_received = false;
-  //   }
-  //
-  //   if (grasp_selected)
-  //   {
-  //     visualization_msgs::MarkerArray marker_array;
-  //     visualizeGraspCandidate(marker_array);
-  //     grasp_viz_pub.publish(marker_array);
-  //     grasp_selected = false;
-  //   }
-  // }
+  ROS_INFO("Waiting for grasp candidate... ");
+  while(node_handle.ok())
+  {
+    ros::spinOnce();
+
+    if (cloud_msg_received)
+    {
+      cloud_pub.publish(cloud_msg);
+      cloud_msg_received = false;
+    }
+
+    if (grasp_selected)
+    {
+      visualization_msgs::MarkerArray marker_array;
+      visualizeGraspCandidate(marker_array);
+      grasp_viz_pub.publish(marker_array);
+      grasp_selected = false;
+    }
+  }
 
   return 0;
 }
