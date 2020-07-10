@@ -1,0 +1,34 @@
+<launch>
+  <arg name="fake_execution" default="true" doc="set to false to run on hardware"/>
+
+  <!-- picknik moveit config ur5 -->
+  <include file ="$(find picknik_ur5_moveit_config)/launch/demo.launch">
+    <arg name="fake_execution" value="$(arg fake_execution)"/>
+  </include>
+
+  <!-- requests graps and grasp pipeline -->
+  <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen">
+    <param name="x_min" value="0.17"/>
+    <param name="x_max" value="0.50"/>
+    <param name="y_min" value="-0.30"/>
+    <param name="y_max" value="0.30"/>
+    <param name="z_min" value="0.0"/>
+    <param name="z_max" value="0.20"/>
+  </node>
+
+  <!-- gpd ros wrapper -->
+  <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
+
+  <!-- Realsense ROS-->
+  <!-- <include file ="$(find realsense2_camera)/launch/rs_camera.launch">
+    <arg name="device_type" value="d415"/>
+    <arg name="filters" value="pointcloud"/>
+  </include> -->
+
+  <!-- tf from the base link to the camera link -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="basetocamera" args="-0.085 -0.125 0.61 0 0.7853 0 base_link camera_link"/>
+
+  <!-- planning -->
+  <!-- <node name="gpd_ur5" pkg="gpd_simulation" type="gpd_ur5" output="screen"/> -->
+
+</launch>
