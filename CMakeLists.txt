@@ -22,11 +22,10 @@ find_package(catkin REQUIRED COMPONENTS
 	gpd_ros
 	robotiq_85_msgs
   roscpp
+	rviz_visual_tools
 	moveit_core
 	moveit_ros_planning
 	moveit_ros_planning_interface
-	moveit_visual_tools
-	# pcl_ros
 	sensor_msgs
 	std_msgs
 	std_srvs
@@ -134,11 +133,10 @@ catkin_package(
  CATKIN_DEPENDS
  	geometry_msgs
 	roscpp
+	rviz_visual_tools
 	moveit_core
 	moveit_ros_planning
 	moveit_ros_planning_interface
-	moveit_visual_tools
-	# pcl_ros
 	sensor_msgs
 	std_msgs
 	std_srvs

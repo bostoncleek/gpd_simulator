@@ -1,19 +1,18 @@
 <launch>
   <!-- robotiq 85 gripper driver -->
-  <arg name="comport" default="/dev/ttyUSB0"/>
+  <!-- <arg name="comport" default="/dev/ttyUSB0"/>
   <arg name="baud" default="115200"/>
   <arg name="run_test" default="false"/>
-  <arg name="prefix" default=""/>
+  <arg name="prefix" default=""/> -->
 
   <!-- Robotiq 85 ROS Driver -->
-  <node pkg="robotiq_85_driver" type="robotiq_85_driver" name="robotiq_85_driver" respawn="true" output="screen">
+  <!-- <node pkg="robotiq_85_driver" type="robotiq_85_driver" name="robotiq_85_driver" respawn="true" output="screen">
     <param name="num_grippers" value="1" />
     <param name="comport" value="$(arg comport)" />
     <param name="baud" value="$(arg baud)" />
     <param name="prefix" value="$(arg prefix)" />
-  </node>
+  </node> -->
 
-  <!-- gpd -->
-  <include file ="$(find gpd_simulation)/launch/gpd_sim.launch"/>
-
+  <!-- commands robot to move -->
+  <node name="gpd_ur5" pkg="gpd_simulation" type="gpd_ur5" output="screen"/>
 </launch>

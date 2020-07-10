@@ -22,11 +22,6 @@
 #include <eigen_conversions/eigen_msg.h>
 #include <std_srvs/Empty.h>
 #include <pcl_conversions/pcl_conversions.h>
-// #include <pcl_ros/point_cloud.h>
-// #include <pcl_ros/impl/transfoms.hpp>
-// #include <tf/transform_listener.h>
-// #include <pcl_ros/transforms.h>
-// #include <tf/transform_datatypes.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2/LinearMath/Transform.h>
 #include <tf2_eigen/tf2_eigen.h>
@@ -90,11 +85,19 @@ struct Gripper
 static sensor_msgs::PointCloud2 cloud_msg;                      // point cloud to search for graps
 static geometry_msgs::TransformStamped t_stamped_base_opt;      // Transform from robot base_link to camera_optical_link
 static geometry_msgs::PoseStamped grasp_pose_robot;             // grasp pose goal
-static Gripper grasp_candidate;
+static Gripper grasp_candidate;                                 // best gpd grasp rep. using eigen
 
 static bool cloud_srv_active;                                   // request grasps status
 static bool cloud_msg_received;                                 // point cloud message received status
 static bool grasp_selected;                                     // publish selected grasp
+
+
+// Inliers representing points in the plane
+// static pcl::PointIndices::Ptr inliers_plane(new pcl::PointIndices);
+// Use a plane as the model for the segmentor
+// static pcl::ModelCoefficients::Ptr coefficients_plane(new pcl::ModelCoefficients);
+// static pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
 
 
 // TODO read params in through server
@@ -103,10 +106,16 @@ static const auto hand_depth = 0.06;
 static const auto finger_width = 0.01;
 static const auto hand_height = 0.02;
 
+// bounds on point cloud in base_lik frame
+static auto x_max = 0.0;
+static auto x_min = 0.0;
 
 static auto y_max = 0.0;
 static auto y_min = 0.0;
-static auto y_padding = 0.05;
+
+static auto z_max = 0.0;
+static auto z_min = 0.0;
+
 
 
 
@@ -265,12 +274,7 @@ void removeTable(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
   if (cloud->points.empty())
   {
     ROS_ERROR("Can't find objects");
-    // ros::shutdown();
   }
-
-  pcl::visualization::CloudViewer viewer ("Cloud");
-  viewer.showCloud (cloud);
-  while (!viewer.wasStopped ()) {}
 }
 
 
@@ -278,14 +282,22 @@ void removeTable(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
 * @brief Filter points above a specific height
 * @param cloud - filtered cloud
 */
-void passThroughFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
+void passThroughFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr filter_cloud)
 {
   pcl::PassThrough<pcl::PointXYZRGB> pass;
-  pass.setInputCloud(cloud);
+  pass.setInputCloud(filter_cloud);
+
+  pass.setFilterFieldName("x");
+  pass.setFilterLimits(x_min, x_max);
+  pass.filter(*filter_cloud);
+
   pass.setFilterFieldName("y");
-  // min and max values in z axis to keep
-  pass.setFilterLimits(y_min, y_max - y_padding);
-  pass.filter(*cloud);
+  pass.setFilterLimits(y_min, y_max);
+  pass.filter(*filter_cloud);
+
+  pass.setFilterFieldName("z");
+  pass.setFilterLimits(z_min, z_max);
+  pass.filter(*filter_cloud);
 }
 
 
@@ -297,6 +309,7 @@ void passThroughFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud)
 bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Response&)
 {
   ROS_INFO("Request grasp service activated");
+  ROS_INFO("Point cloud selected");
   cloud_srv_active = true;
   return true;
 }
@@ -309,85 +322,50 @@ bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Respo
 */
 void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 {
-  // if (cloud_srv_active)
+  // // Convert transform from base_link to optical frame to a eigen matrix
+  // Eigen::Matrix4f eigen_transform_base_optical = tf2::transformToEigen(t_stamped_base_opt).matrix().cast<float>();
+  //
+  // // transfom point cloud into frame of base_link
+  // transformPointCloud(eigen_transform_base_optical, *msg, cloud_msg);
+  // cloud_msg.header.frame_id = t_stamped_base_opt.header.frame_id;
+
+  // convert from ROS msg to a point cloud
+  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+  pcl::fromROSMsg(*msg.get(), *cloud);
+  ROS_INFO("Point cloud size: %lu ", cloud->points.size());
+
+
+  // pcl::PointXYZRGB min_pt, max_pt;
+  // pcl::getMinMax3D(*cloud, min_pt, max_pt);
+  //
+  // std::cout << "Pre filter" << std::endl;
+  // std::cout << "min x: " << min_pt.x << std::endl;
+  // std::cout << "min y: " << min_pt.y << std::endl;
+  // std::cout << "min z: " << min_pt.z << std::endl<<std::endl;
+  //
+  // std::cout << "max x: " << max_pt.x << std::endl;
+  // std::cout << "max y: " << max_pt.y << std::endl;
+  // std::cout << "max z: " << max_pt.z << std::endl<<std::endl;
+
+
+  // remove points bellow a vertical threshold
+  // passThroughFilter(cloud);
+
+
+  // segment objects from table
+  removeTable(cloud);
+  ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
+
+
+  if (cloud->points.empty())
   {
-    // ROS_INFO("Point cloud selected");
-    // ROS_INFO("Frame ID: %s", msg->header.frame_id.c_str());
-
-
-    // Convert transform from base_link to optical frame to a eigen matrix
-    Eigen::Matrix4f eigen_transform_base_optical = tf2::transformToEigen(t_stamped_base_opt).matrix().cast<float>();
-
-
-    // transfom point cloud into frame of base_link
-    transformPointCloud(eigen_transform_base_optical, *msg, cloud_msg);
-    cloud_msg.header.frame_id = t_stamped_base_opt.header.frame_id;
-
-
-
-    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_in(new pcl::PointCloud<pcl::PointXYZRGB>);
-    // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_out(new pcl::PointCloud<pcl::PointXYZRGB>);
-    //
-    //
-    // // convert from ROS msg to a point cloud
-    // pcl::fromROSMsg(*msg.get(), *cloud_in);
-
-
-    // pcl_ros::transformPointCloud(t_stamped_base_opt.header.frame_id, t_stamped_base_opt, *msg, cloud_msg);
-
-
-
-
-    // Annoying conversion
-    // Eigen::Affine3d affine_transform;
-    // tf::transformEigenToMsg(affine_transform, t_stamped_base_opt.transform);
-    // Eigen::Matrix4f transform = affine_transform.matrix().cast<float>();
-    //
-    // // Apply transform to cloud, now in base_link frame
-    // pcl_ros::transformPointCloud(transform, *msg, cloud_msg);
-
-
-    // pcl_ros::transformPointCloudWithNormals(*cloud_in, *cloud_out, t_stamped_base_opt.transform);
-
-
-    // ROS_INFO("Point cloud size: %lu ", cloud->points.size());
-
-    // pcl::PointXYZRGB min_pt, max_pt;
-    // pcl::getMinMax3D(*cloud, min_pt, max_pt);
-    //
-    // // std::cout << "Pre filter" << std::endl;
-    // // std::cout << "min x: " << min_pt.x << std::endl;
-    // // std::cout << "min y: " << min_pt.y << std::endl;
-    // // std::cout << "min z: " << min_pt.z << std::endl<<std::endl;
-    // //
-    // // std::cout << "max x: " << max_pt.x << std::endl;
-    // // std::cout << "max y: " << max_pt.y << std::endl;
-    // // std::cout << "max z: " << max_pt.z << std::endl<<std::endl;
-    //
-    // y_min = min_pt.y;
-    // y_max = max_pt.y;
-
-
-    // remove points bellow a vertical threshold
-    // passThroughFilter(cloud);
-
-
-    // segment objects from table
-    // removeTable(cloud);
-    // ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
-    //
-    // if (cloud->points.empty())
-    // {
-    //   ROS_ERROR("Cloud empty");
-    // }
-    //
-    // // covert back to ROS msg
-    // pcl::toROSMsg(*cloud, cloud_msg);
-
-
-    cloud_srv_active = false;
-    cloud_msg_received = true;
+    ROS_ERROR("Cloud empty");
   }
+
+  // // covert back to ROS msg
+  pcl::toROSMsg(*cloud, cloud_msg);
+
+  cloud_msg_received = true;
 }
 
 
@@ -399,10 +377,7 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 */
 void graspCallBack(const gpd_ros::GraspConfigList::ConstPtr &msg)
 {
-  ROS_INFO("Number of graps received %lu", msg->grasps.size());
-
   // Use the best grasp
-  // grasp_msg = msg->grasps.at(0);
 
   // Position of grasp
   Eigen::Vector3d position;
@@ -416,42 +391,31 @@ void graspCallBack(const gpd_ros::GraspConfigList::ConstPtr &msg)
   tf::vectorMsgToEigen(msg->grasps.at(0).binormal, binormal);
   tf::vectorMsgToEigen(msg->grasps.at(0).axis, axis);
 
+
   Eigen::Matrix3d orientation;
   orientation.col(0) = approach;
   orientation.col(1) = binormal;
   orientation.col(2) = axis;
 
-  // Transform from camera optical link to grasp
-  Eigen::Affine3d t_optical_grasp;
-  t_optical_grasp.translation() = position;
-  t_optical_grasp.linear() = orientation;
+  Eigen::Affine3d grasp_orientation;
+  grasp_orientation.translation() = position;
+  grasp_orientation.linear() = orientation;
 
-  // std::cout << "Translation: " <<  t_optical_grasp.translation() << std::endl;
-  // std::cout << "Rotation: " << t_optical_grasp.rotation() << std::endl;
 
-  // Convert Eigen transform into pose msg in frame of optical link
-  geometry_msgs::Pose pose_frame_optical;
-  tf::poseEigenToMsg(t_optical_grasp, pose_frame_optical);
+  tf::poseEigenToMsg(grasp_orientation, grasp_pose_robot.pose);
+  grasp_pose_robot.header.frame_id = msg->header.frame_id;
 
-  geometry_msgs::PoseStamped grasp_pose_optical;
-  grasp_pose_optical.pose = pose_frame_optical;
-
-  // Transform grasp pose in frame of optical link into frame of the base_link of the robot
-  // geometry_msgs::PoseStamped grasp_pose_robot;
-  tf2::doTransform(grasp_pose_optical, grasp_pose_robot, t_stamped_base_opt);
-
-  // Convert to representation used to visualize in frame of robot's base_link
   tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
-  Eigen::Matrix3d grasp_rot = grasp_candidate.quat.toRotationMatrix();
 
-  tf::pointMsgToEigen(grasp_pose_robot.pose.position, grasp_candidate.position);
-  grasp_candidate.approach = grasp_rot.col(0);
-  grasp_candidate.binormal = grasp_rot.col(1);
-  grasp_candidate.axis = grasp_rot.col(2);
+  grasp_candidate.position = position;
+  grasp_candidate.approach = approach;
+  grasp_candidate.binormal = binormal;
+  grasp_candidate.axis = axis;
 
   grasp_candidate.width = msg->grasps.at(0).width.data;
   grasp_candidate.score = msg->grasps.at(0).score.data;
-  grasp_candidate.frame_id = grasp_pose_robot.header.frame_id;
+  grasp_candidate.frame_id = msg->header.frame_id;
+
 
   std::cout << "Pose of grasp: " << grasp_pose_robot << std::endl;
   ROS_INFO_NAMED("GPD", "Required gripper width: %f", grasp_candidate.width);
@@ -602,10 +566,18 @@ int main(int argc, char** argv)
   ros::Subscriber cloud_sub = node_handle.subscribe("camera/depth/color/points", 1, cloudCallBack);
   ros::Subscriber grasp_sub = node_handle.subscribe("detect_grasps/clustered_grasps", 1, graspCallBack);
 
-  ros::Publisher cloud_pub = node_handle.advertise<sensor_msgs::PointCloud2>("cloud_stitched", 1);
+  ros::Publisher filter_cloud_pub = node_handle.advertise<sensor_msgs::PointCloud2>("filtered_cloud", 1);
+  ros::Publisher gpd_cloud_pub = node_handle.advertise<sensor_msgs::PointCloud2>("cloud_stitched", 1);
   ros::Publisher grasp_viz_pub = node_handle.advertise<visualization_msgs::MarkerArray>("grasp_candidate", 1);
 
   ros::ServiceServer cloud_serv = node_handle.advertiseService("request_grasp", requestGraspCloudCallBack);
+
+  nh.getParam("x_min", x_min);
+  nh.getParam("x_max", x_max);
+  nh.getParam("y_min", y_min);
+  nh.getParam("y_max", y_max);
+  nh.getParam("z_min", z_min);
+  nh.getParam("z_max", z_max);
 
   ROS_INFO("Successfully launch gpd_realsense node");
 
@@ -632,22 +604,14 @@ int main(int argc, char** argv)
   {
     ROS_WARN("%s", ex.what());
     ROS_ERROR("No transform between base_link and camera_depth_optical_frame found");
+    ros::shutdown();
   }
 
 
-  std::cout << "t_stamped_base_opt" << std::endl;
-  std::cout << t_stamped_base_opt << std::endl;
+  // std::cout << "t_stamped_base_opt" << std::endl;
+  // std::cout << t_stamped_base_opt << std::endl;
 
 
-
-  // // assume camera_depth_optical_frame is at base_link
-  // std::string frame_id = "camera_depth_optical_frame";
-  // grasp_candidate.frame_id = frame_id;
-  // t_stamped_base_opt.header.frame_id = frame_id;
-  // t_stamped_base_opt.child_frame_id = frame_id;
-  // t_stamped_base_opt.transform.rotation.w = 1.0;
-  //
-  //
   ROS_INFO("Waiting for grasp candidate... ");
   while(node_handle.ok())
   {
@@ -655,12 +619,20 @@ int main(int argc, char** argv)
 
     if (cloud_msg_received)
     {
-      cloud_pub.publish(cloud_msg);
+      filter_cloud_pub.publish(cloud_msg);
       cloud_msg_received = false;
+
+      if (cloud_srv_active)
+      {
+        gpd_cloud_pub.publish(cloud_msg);
+        cloud_srv_active = false;
+      }
     }
+
 
     if (grasp_selected)
     {
+      // marker array viz best grasp
       visualization_msgs::MarkerArray marker_array;
       visualizeGraspCandidate(marker_array);
       grasp_viz_pub.publish(marker_array);

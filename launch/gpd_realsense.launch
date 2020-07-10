@@ -1,13 +1,21 @@
 <launch>
+
   <!-- requests graps and commands robot to move -->
-  <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen"/>
+  <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen">
+    <param name="x_min" value="0.17"/>
+    <param name="x_max" value="0.50"/>
+    <param name="y_min" value="-0.30"/>
+    <param name="y_max" value="0.30"/>
+    <param name="z_min" value="0.0"/>
+    <param name="z_max" value="0.20"/>
+  </node>
 
   <!-- gpd ros wrapper -->
   <!-- <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/> -->
 
   <!-- Realsense ROS-->
   <!-- <include file ="$(find realsense2_camera)/launch/rs_camera.launch">
-    <arg name="device_type" value="d435"/>
+    <arg name="device_type" value="d415"/>
     <arg name="filters" value="pointcloud"/>
   </include> -->
 

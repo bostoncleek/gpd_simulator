@@ -8,7 +8,6 @@ Panels:
         - /Status1
         - /DepthCloud1/Auto Size1
         - /CameraFrame1
-        - /CameraFrame1/Status1
         - /TF1/Frames1
       Splitter Ratio: 0.6058252453804016
     Tree Height: 688
@@ -30,7 +29,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: CameraFrame
+    SyncSource: Camera
 Preferences:
   PromptSaveOnExit: true
 Toolbars:
@@ -106,7 +105,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -123,7 +122,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Class: rviz/TF
       Enabled: true
       Frame Timeout: 15
@@ -179,13 +178,13 @@ Visualization Manager:
       Update Interval: 0
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /detect_grasps/plot_grasps
       Name: GraspList
       Namespaces:
         {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /grasp_candidate
@@ -194,36 +193,6 @@ Visualization Manager:
         {}
       Queue Size: 100
       Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: RGB8
-      Decay Time: 0
-      Enabled: false
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: CloudStitched
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.009999999776482582
-      Style: Flat Squares
-      Topic: /cloud_stitched
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: false
     - Class: rviz/Camera
       Enabled: false
       Image Rendering: background and overlay
@@ -236,14 +205,13 @@ Visualization Manager:
       Value: false
       Visibility:
         "": true
-        Axes: true
         Camera: true
-        CloudStitched: true
+        CameraFrame: true
         DepthCloud: true
+        FilteredCloud: true
         GraspCandidate: true
         GraspList: true
         Grid: true
-        PointCloud2: true
         RobotModel: true
         TF: true
         Value: true
@@ -259,25 +227,18 @@ Visualization Manager:
       Unreliable: false
       Value: true
       Visibility:
-        Axes: true
         Camera: true
         CameraFrame: true
-        CloudStitched: true
         DepthCloud: true
+        FilteredCloud: true
         GraspCandidate: true
         GraspList: true
         Grid: true
+        PointCloud2: true
         RobotModel: true
         TF: true
         Value: true
       Zoom Factor: 1
-    - Class: rviz/Axes
-      Enabled: false
-      Length: 1
-      Name: Axes
-      Radius: 0.10000000149011612
-      Reference Frame: <Fixed Frame>
-      Value: false
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: false
@@ -320,20 +281,50 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
       Min Color: 0; 0; 0
       Min Intensity: 0
-      Name: CloudStitched
+      Name: FilteredCloud
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
       Size (m): 0.009999999776482582
       Style: Flat Squares
-      Topic: /cloud_stitched
+      Topic: /filtered_cloud
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Max Intensity: 4096
+      Min Color: 0; 0; 0
+      Min Intensity: 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Flat Squares
+      Topic: /camera/depth/color/points
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -366,25 +357,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.122204303741455
+      Distance: 1.4423106908798218
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.07602211087942123
-        Y: -0.03148335590958595
-        Z: -0.3234284520149231
+        X: 0.3076062500476837
+        Y: -0.1268324851989746
+        Z: -0.023057179525494576
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7697960138320923
+      Pitch: 0.47479742765426636
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.7754273414611816
+      Yaw: 2.6504201889038086
     Saved: ~
 Window Geometry:
   Camera:
@@ -404,5 +395,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1870
-  X: 2498
-  Y: 77
+  X: 2535
+  Y: 45
