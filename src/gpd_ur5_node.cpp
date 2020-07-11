@@ -196,29 +196,29 @@ void addCollisionBox(moveit::planning_interface::PlanningSceneInterface& plannin
 
   //////////////////////////////////////////////////////////////////////////
   // Add the box
-  collision_objects[0].id = "box";
-  collision_objects[0].header.frame_id = "base_link";
-
-  // Define the primitive and its dimensions
-  collision_objects[0].primitives.resize(1);
-  collision_objects[0].primitives[0].type = collision_objects[1].primitives[0].BOX;
-  collision_objects[0].primitives[0].dimensions.resize(3);
-  collision_objects[0].primitives[0].dimensions[0] = 0.1;
-  collision_objects[0].primitives[0].dimensions[1] = 0.066;
-  collision_objects[0].primitives[0].dimensions[2] = 0.04;
-
-  // Define the pose of the box
-  collision_objects[0].primitive_poses.resize(1);
-  collision_objects[0].primitive_poses[0].position.x = 0.4;
-  collision_objects[0].primitive_poses[0].position.y = 0.0;
-  collision_objects[0].primitive_poses[0].position.z = 0.05;
-
-  collision_objects[0].primitive_poses[0].orientation.x = 0.5;
-  collision_objects[0].primitive_poses[0].orientation.y = -0.5;
-  collision_objects[0].primitive_poses[0].orientation.z = 0.5;
-  collision_objects[0].primitive_poses[0].orientation.w = 0.5;
-
-  collision_objects[0].operation = collision_objects[0].ADD;
+  // collision_objects[0].id = "box";
+  // collision_objects[0].header.frame_id = "base_link";
+  //
+  // // Define the primitive and its dimensions
+  // collision_objects[0].primitives.resize(1);
+  // collision_objects[0].primitives[0].type = collision_objects[1].primitives[0].BOX;
+  // collision_objects[0].primitives[0].dimensions.resize(3);
+  // collision_objects[0].primitives[0].dimensions[0] = 0.1;
+  // collision_objects[0].primitives[0].dimensions[1] = 0.066;
+  // collision_objects[0].primitives[0].dimensions[2] = 0.04;
+  //
+  // // Define the pose of the box
+  // collision_objects[0].primitive_poses.resize(1);
+  // collision_objects[0].primitive_poses[0].position.x = 0.4;
+  // collision_objects[0].primitive_poses[0].position.y = 0.0;
+  // collision_objects[0].primitive_poses[0].position.z = 0.05;
+  //
+  // collision_objects[0].primitive_poses[0].orientation.x = 0.5;
+  // collision_objects[0].primitive_poses[0].orientation.y = -0.5;
+  // collision_objects[0].primitive_poses[0].orientation.z = 0.5;
+  // collision_objects[0].primitive_poses[0].orientation.w = 0.5;
+  //
+  // collision_objects[0].operation = collision_objects[0].ADD;
 
   //////////////////////////////////////////////////////////////////////////
   // Add the table
@@ -362,9 +362,9 @@ int main(int argc, char** argv)
 
 
   // Wait for gripper status
-  // ROS_INFO("Waiting for Robotiq gripper...");
-  // while (node_handle.ok() && !gripper_ready) { ros::spinOnce(); }
-  // ROS_INFO("Robotiq gripper is ready");
+  ROS_INFO("Waiting for Robotiq gripper...");
+  while (node_handle.ok() && !gripper_ready) { ros::spinOnce(); }
+  ROS_INFO("Robotiq gripper is ready");
 
 
   // No msgs or services have been called
@@ -389,8 +389,8 @@ int main(int argc, char** argv)
 
 
   // Setup visualization
-  rviz_visual_tools::RvizVisualToolsPtr visual_tools(new rviz_visual_tools::RvizVisualTools("base_link","/rviz_visual_markers"));
-  visual_tools->trigger();
+  // rviz_visual_tools::RvizVisualToolsPtr visual_tools(new rviz_visual_tools::RvizVisualTools("base_link","/rviz_visual_markers"));
+  // visual_tools->trigger();
 
 
   // Reference frame for this robot.
@@ -409,37 +409,13 @@ int main(int argc, char** argv)
   ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
 
 
-  // ////////////////////////////////////////////////////////////////
-  // // Test gripper open/close
-  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to close");
-  //
-  // trajectory_msgs::JointTrajectory gripper_state_msg;   // gripper sim msg
-  // robotiq_85_msgs::GripperCmd gripper_cmd;              // gripper hardware msg
-  //
-  // setGripperState(gripper_state_msg, 0.8);
-  // gripper_cmd_pub.publish(gripper_state_msg);
-  //
-  // gripper_cmd.position = 0.0;
-  // robotiq_cmd_pub.publish(gripper_cmd);
-  //
-  //
-  // visual_tools.prompt("Press 'next' in the RvizVisualToolsGui window to plan to open");
-  //
-  // setGripperState(gripper_state_msg, 0.0);
-  // gripper_cmd_pub.publish(gripper_state_msg);
-  //
-  // gripper_cmd.position = 0.8;
-  // robotiq_cmd_pub.publish(gripper_cmd);
-  // ////////////////////////////////////////////////////////////////
-
-
   // Setup planning scene
   moveit::planning_interface::PlanningSceneInterface planning_scene_interface;
   addCollisionBox(planning_scene_interface);
 
 
   /////////////////////////////////////////////////////
-  visual_tools->prompt("Press 'next' in the RvizVisualToolsGui window to start configuration");
+  // visual_tools->prompt("Press 'next' in the RvizVisualToolsGui window to start configuration");
 
   // starting joint angles std::vector<double> joint_group_positions;
   std::vector<double> joint_group_positions(6);
@@ -457,106 +433,105 @@ int main(int argc, char** argv)
   /////////////////////////////////////////////////////
   // wait for gripper to be ready
 
-  // ROS_INFO("Waiting for grasp candidate... ");
-  // while (node_handle.ok() && !grasp_selected) { ros::spinOnce(); }
-  // ROS_INFO("Grasp candidate received");
+  ROS_INFO("Waiting for grasp candidate... ");
+  while (node_handle.ok() && !grasp_selected) { ros::spinOnce(); }
+  ROS_INFO("Grasp candidate received");
 
 
   /////////////////////////////////////////////////////
   // Hard code goal for testing (Previous result from GPD)
-  grasp_pose_robot.header.frame_id = "base_link";
-  grasp_pose_robot.pose.position.x = 0.396656;
-  grasp_pose_robot.pose.position.y = 0.00208467;
-  grasp_pose_robot.pose.position.z = 0.110008;
-
-  grasp_pose_robot.pose.orientation.x = -0.0626088;
-  grasp_pose_robot.pose.orientation.y = 0.665858;
-  grasp_pose_robot.pose.orientation.z = -0.0728375;
-  grasp_pose_robot.pose.orientation.w = 0.73987;
-
-  tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
-  grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
+  // grasp_pose_robot.header.frame_id = "base_link";
+  // grasp_pose_robot.pose.position.x = 0.396656;
+  // grasp_pose_robot.pose.position.y = 0.00208467;
+  // grasp_pose_robot.pose.position.z = 0.110008;
+  //
+  // grasp_pose_robot.pose.orientation.x = -0.0626088;
+  // grasp_pose_robot.pose.orientation.y = 0.665858;
+  // grasp_pose_robot.pose.orientation.z = -0.0728375;
+  // grasp_pose_robot.pose.orientation.w = 0.73987;
+  //
+  // tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
+  // grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
   /////////////////////////////////////////////////////
 
 
 
-  // /////////////////////////////////////////////////////
-  // // Pick
+  /////////////////////////////////////////////////////
+  // Pick
   // visual_tools->prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
-  //
-  // trajectory_msgs::JointTrajectory gripper_state_msg;   // gripper sim msg
-  // robotiq_85_msgs::GripperCmd gripper_cmd;              // gripper hardware msg
-  //
-  // // Open gripper
-  // gripper_cmd.position = 0.8;
-  // robotiq_cmd_pub.publish(gripper_cmd);
-  //
-  //
-  // // Pre-grasp displacement, pre grasp distance 25cm from tool_changer_tool0
-  // geometry_msgs::Pose pre_grasp = preGrasp(0.25);
-  // move_group.setPoseTarget(pre_grasp);
-  // move_group.move();
-  //
-  // // move 10cm from pre-grasp goal
-  // geometry_msgs::Pose grasp_goal = graspPose(pre_grasp, 0.1);
-  // move_group.setPoseTarget(grasp_goal);
-  // move_group.move();
-  //
-  //
-  // // Close gripper
-  // gripper_cmd.position = 0.0;
-  // robotiq_cmd_pub.publish(gripper_cmd);
-  //
-  // // wait for gripper to close
-  // ros::Duration(1.0).sleep();
-  //
+
+  robotiq_85_msgs::GripperCmd gripper_cmd;              // gripper hardware msg
+
+  // Open gripper
+  gripper_cmd.position = 0.8;
+  robotiq_cmd_pub.publish(gripper_cmd);
+
+
+  // Pre-grasp displacement, pre grasp distance 25cm from tool_changer_tool0
+  geometry_msgs::Pose pre_grasp = preGrasp(0.25);
+  move_group.setPoseTarget(pre_grasp);
+  move_group.move();
+
+  // move 10cm from pre-grasp goal
+  geometry_msgs::Pose grasp_goal = graspPose(pre_grasp, 0.1);
+  move_group.setPoseTarget(grasp_goal);
+  move_group.move();
+
+
+  // Close gripper
+  gripper_cmd.position = 0.0;
+  robotiq_cmd_pub.publish(gripper_cmd);
+
+  // wait for gripper to close
+  ros::Duration(1.0).sleep();
+
   // // Attach box to gripper
   // move_group.attachObject("box");
 
+  geometry_msgs::Vector3 lift_direction;
+  lift_direction.x = 0.0;
+  lift_direction.y = 0.0;
+  lift_direction.z = 1.0;
+
+
   // Post-grasp displacement
-  // geometry_msgs::Vector3 direction;
-  // direction.x = 0.0;
-  // direction.y = 0.0;
-  // direction.z = 1.0;
-  // geometry_msgs::Pose post_grasp = postGrasp(grasp_goal, direction, 0.15);
-  // geometry_msgs::Pose post_grasp = pre_grasp;
-  //
-  // // use cartesian planning for post grasp retreat
-  // std::vector<geometry_msgs::Pose> waypoints(1);
-  // waypoints.at(0) = post_grasp;
-  //
-  //
-  // moveit_msgs::RobotTrajectory trajectory;
-  // const double jump_threshold = 0.0;
-  // const double eef_step = 0.01;
-  // double fraction = move_group.computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
-  // ROS_INFO("Pose Grasp Cartesian path (%.2f%% acheived)", fraction * 100.0);
-  //
-  // move_group.execute(trajectory);
+  geometry_msgs::Pose post_grasp = postGrasp(grasp_goal, lift_direction, 0.15);
+
+  move_group.setPoseTarget(post_grasp);
+  move_group.move();
   /////////////////////////////////////////////////////
 
 
   /////////////////////////////////////////////////////
   // Place
-  // geometry_msgs::Pose place_pose;
-  // place_pose.position.x = 0.0;
-  // place_pose.position.y = -0.40;
-  // place_pose.position.z = 0.3;
-  // place_pose.orientation.w = 1.0;
-  //
-  // move_group.setPoseTarget(place_pose);
-  // move_group.move();
-  //
-  // // Open gripper
-  // setGripperState(gripper_state_msg, 0.0);
-  // gripper_cmd_pub.publish(gripper_state_msg);
-  //
+  geometry_msgs::Pose drop_goal = grasp_goal;
+  drop_goal.position.y = drop_goal.position.y + 0.20;
+
+  move_group.setPoseTarget(drop_goal);
+  move_group.move();
+
+
+  // Open gripper
+  gripper_cmd.position = 0.8;
+  robotiq_cmd_pub.publish(gripper_cmd);
+
+  // wait for gripper to open
+  ros::Duration(1.0).sleep();
+
   // // Detach box to gripper
   // move_group.detachObject("cracker_box");
+
+
+  // place retreat
+  geometry_msgs::Pose post_drop = postGrasp(drop_goal, lift_direction, 0.15);
+
+  move_group.setPoseTarget(post_drop);
+  move_group.move();
+
   /////////////////////////////////////////////////////
 
 
-  ros::waitForShutdown();
+  ros::shutdown();
   return 0;
 }
 

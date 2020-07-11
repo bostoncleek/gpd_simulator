@@ -334,7 +334,7 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
   pcl::fromROSMsg(cloud_msg, *cloud);
-  ROS_INFO("Point cloud size: %lu ", cloud->points.size());
+  // ROS_INFO("Point cloud size: %lu ", cloud->points.size());
 
 
   // pcl::PointXYZRGB min_pt, max_pt;
@@ -356,7 +356,7 @@ void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 
   // segment objects from table
   removeTable(cloud);
-  ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
+  // ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
 
 
   if (cloud->points.empty())
@@ -612,6 +612,32 @@ int main(int argc, char** argv)
 
   // std::cout << "t_stamped_base_opt" << std::endl;
   // std::cout << t_stamped_base_opt << std::endl;
+
+
+  /////////////////////////////////////////////////////
+  // Hard code goal for testing (Previous result from GPD)
+  // grasp_pose_robot.header.frame_id = "base_link";
+  // grasp_pose_robot.pose.position.x = 0.396656;
+  // grasp_pose_robot.pose.position.y = 0.00208467;
+  // grasp_pose_robot.pose.position.z = 0.110008;
+  //
+  // grasp_pose_robot.pose.orientation.x = -0.0626088;
+  // grasp_pose_robot.pose.orientation.y = 0.665858;
+  // grasp_pose_robot.pose.orientation.z = -0.0728375;
+  // grasp_pose_robot.pose.orientation.w = 0.73987;
+  //
+  // tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
+  // grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
+  // grasp_candidate.binormal = grasp_candidate.quat.toRotationMatrix().col(1);
+  // grasp_candidate.axis = grasp_candidate.quat.toRotationMatrix().col(2);
+  // grasp_candidate.frame_id = grasp_pose_robot.header.frame_id;
+  //
+  // grasp_selected = true;
+  /////////////////////////////////////////////////////
+
+
+
+
 
 
   ROS_INFO("Waiting for grasp candidate... ");

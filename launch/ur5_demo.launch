@@ -29,6 +29,6 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="basetocamera" args="-0.085 -0.125 0.61 0 0.7853 0 base_link camera_link"/>
 
   <!-- planning -->
-  <!-- <node name="gpd_ur5" pkg="gpd_simulation" type="gpd_ur5" output="screen"/> -->
+  <node name="gpd_ur5" pkg="gpd_simulation" type="gpd_ur5" output="screen"/>
 
 </launch>

@@ -178,13 +178,13 @@ Visualization Manager:
       Update Interval: 0
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /detect_grasps/plot_grasps
       Name: GraspList
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /grasp_candidate
@@ -194,29 +194,6 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/Camera
-      Enabled: false
-      Image Rendering: background and overlay
-      Image Topic: /camera/color/image_raw
-      Name: Camera
-      Overlay Alpha: 0.5
-      Queue Size: 2
-      Transport Hint: raw
-      Unreliable: false
-      Value: false
-      Visibility:
-        "": true
-        Camera: true
-        CameraFrame: true
-        DepthCloud: true
-        FilteredCloud: true
-        GraspCandidate: true
-        GraspList: true
-        Grid: true
-        RobotModel: true
-        TF: true
-        Value: true
-      Zoom Factor: 1
-    - Class: rviz/Camera
       Enabled: true
       Image Rendering: background and overlay
       Image Topic: /camera/color/image_raw
@@ -226,6 +203,29 @@ Visualization Manager:
       Transport Hint: raw
       Unreliable: false
       Value: true
+      Visibility:
+        Camera: true
+        CameraFrame: true
+        DepthCloud: true
+        FilteredCloud: true
+        GraspCandidate: true
+        GraspList: true
+        Grid: true
+        PointCloud2: true
+        RobotModel: true
+        TF: true
+        Value: true
+      Zoom Factor: 1
+    - Class: rviz/Camera
+      Enabled: false
+      Image Rendering: background and overlay
+      Image Topic: /camera/color/image_raw
+      Name: Camera
+      Overlay Alpha: 0.5
+      Queue Size: 2
+      Transport Hint: raw
+      Unreliable: false
+      Value: false
       Visibility:
         Camera: true
         CameraFrame: true
@@ -357,25 +357,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.4423106908798218
+      Distance: 1.3771605491638184
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.3076062500476837
-        Y: -0.1268324851989746
-        Z: -0.023057179525494576
+        X: 0.25839394330978394
+        Y: -0.006510706152766943
+        Z: -0.0359552726149559
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.47479742765426636
+      Pitch: 0.3697974681854248
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.6504201889038086
+      Yaw: 4.337249755859375
     Saved: ~
 Window Geometry:
   Camera:
@@ -395,5 +395,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1870
-  X: 2535
-  Y: 45
+  X: 2158
+  Y: 111
