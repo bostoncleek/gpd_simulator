@@ -14,16 +14,41 @@ GPD consists of two main steps: </br>
 
 
 2) Download the rosinstall file
+* note: There are two MoveIt! config packages that are downloaded if you use both rosinstall files. The first is from the [Kavraki Lab](http://www.kavrakilab.org/) and the second is from [PickNik](https://picknik.ai/). Both can be used for simulation but the config from PickNik is currently used for testing on PickNik's UR5.
+
+`mkdir -p gpd_ws/src`
+
+`wstool merge https://raw.githubusercontent.com/bostoncleek/gpd_simulator/master/gpd.rosinstall`
+
+`wstool merge https://raw.githubusercontent.com/PickNikRobotics/picknik_ur5_moveit_config/master/picknik_ur5_moveit_config.rosinstall`
+
+`wstool update`
+
+
 
 3) Check dependencies </br>
 `rosdep update` </br>
 `rosdep install --rosdistro $ROS_DISTRO --ignore-src --from-paths src`
 
 4) Build </br>
-`catkin_make`
+`catkin build`
 
 # How to run
 
+## PickNik MoveIt Config
+1) `roslaunch ur_gazebo ur5_demo.launch fake_execution:=false`
+* note: Set fake_execution:=true to run in simulation.
+* note: You may need to set usb permissions for the Robotiq Gripper
+
+`sudo chmod 666 /dev/ttyUSB0`
+
+2) Request a grasp candidate using the current point cloud published by the depth camera
+
+`rosservice call /request_grasp`
+
+
+
+## Kavraki Lab MoveIt Config
 1) Launch the simulation </br>
 `roslaunch ur_gazebo ur5_robotiq85.launch` </br>
 
@@ -55,6 +80,8 @@ The green marker is the highest ranked grasp candidate using point cloud data.
 <p align="center">
   <img src="media/gpdur5rviz.gif" width="450" height="450"/>
 </p>
+
+The Gazebo physics engine is not robust enough to accurately simulate grasping. The robot is unable to pick up the object when the friction between gripper and box is maximum.
 
 <p align="center">
   <img src="media/gpdur5gazebo.gif" width="450" height="450"/>

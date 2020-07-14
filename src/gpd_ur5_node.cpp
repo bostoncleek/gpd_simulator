@@ -362,9 +362,9 @@ int main(int argc, char** argv)
 
 
   // Wait for gripper status
-  ROS_INFO("Waiting for Robotiq gripper...");
-  while (node_handle.ok() && !gripper_ready) { ros::spinOnce(); }
-  ROS_INFO("Robotiq gripper is ready");
+  // ROS_INFO("Waiting for Robotiq gripper...");
+  // while (node_handle.ok() && !gripper_ready) { ros::spinOnce(); }
+  // ROS_INFO("Robotiq gripper is ready");
 
 
   // No msgs or services have been called
@@ -389,8 +389,8 @@ int main(int argc, char** argv)
 
 
   // Setup visualization
-  // rviz_visual_tools::RvizVisualToolsPtr visual_tools(new rviz_visual_tools::RvizVisualTools("base_link","/rviz_visual_markers"));
-  // visual_tools->trigger();
+  rviz_visual_tools::RvizVisualToolsPtr visual_tools(new rviz_visual_tools::RvizVisualTools("base_link","/rviz_visual_markers"));
+  visual_tools->trigger();
 
 
   // Reference frame for this robot.
@@ -433,32 +433,32 @@ int main(int argc, char** argv)
   /////////////////////////////////////////////////////
   // wait for gripper to be ready
 
-  ROS_INFO("Waiting for grasp candidate... ");
-  while (node_handle.ok() && !grasp_selected) { ros::spinOnce(); }
-  ROS_INFO("Grasp candidate received");
+  // ROS_INFO("Waiting for grasp candidate... ");
+  // while (node_handle.ok() && !grasp_selected) { ros::spinOnce(); }
+  // ROS_INFO("Grasp candidate received");
 
 
   /////////////////////////////////////////////////////
   // Hard code goal for testing (Previous result from GPD)
-  // grasp_pose_robot.header.frame_id = "base_link";
-  // grasp_pose_robot.pose.position.x = 0.396656;
-  // grasp_pose_robot.pose.position.y = 0.00208467;
-  // grasp_pose_robot.pose.position.z = 0.110008;
-  //
-  // grasp_pose_robot.pose.orientation.x = -0.0626088;
-  // grasp_pose_robot.pose.orientation.y = 0.665858;
-  // grasp_pose_robot.pose.orientation.z = -0.0728375;
-  // grasp_pose_robot.pose.orientation.w = 0.73987;
-  //
-  // tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
-  // grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
+  grasp_pose_robot.header.frame_id = "base_link";
+  grasp_pose_robot.pose.position.x = 0.396656;
+  grasp_pose_robot.pose.position.y = 0.00208467;
+  grasp_pose_robot.pose.position.z = 0.110008;
+
+  grasp_pose_robot.pose.orientation.x = -0.0626088;
+  grasp_pose_robot.pose.orientation.y = 0.665858;
+  grasp_pose_robot.pose.orientation.z = -0.0728375;
+  grasp_pose_robot.pose.orientation.w = 0.73987;
+
+  tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
+  grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
   /////////////////////////////////////////////////////
 
 
 
   /////////////////////////////////////////////////////
   // Pick
-  // visual_tools->prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
+  visual_tools->prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
 
   robotiq_85_msgs::GripperCmd gripper_cmd;              // gripper hardware msg
 
@@ -517,7 +517,7 @@ int main(int argc, char** argv)
 
   // wait for gripper to open
   ros::Duration(1.0).sleep();
-
+//
   // // Detach box to gripper
   // move_group.detachObject("cracker_box");
 
