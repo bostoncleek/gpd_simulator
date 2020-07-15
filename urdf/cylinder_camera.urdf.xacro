@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<robot name="robot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <link name="base_link" />
+
+  <!--kinect  -->
+  <xacro:include filename="$(find gpd_simulation)/urdf/kinect.urdf.xacro"/>
+  <!--attach the kinect to the robot -->
+  <xacro:sensor_kinect  parent="base_link"/>
+
+
+  <link name="cylinder_link">
+    <visual>
+      <geometry>
+        <cylinder length="0.25" radius="0.02"/>
+      </geometry>
+      <material name="red">
+        <color rgba="1 0 0 1"/>
+      </material>
+    </visual>
+
+  </link>
+
+  <joint name="base_to_cylinder" type="fixed">
+   <parent link="base_link" />
+   <child link="cylinder_link" />
+   <origin xyz="0.5 -0.25 0.125" rpy="0 0 0" />
+  </joint>
+
+</robot>
