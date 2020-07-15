@@ -1,0 +1,38 @@
+<launch>
+
+  <!-- requests grasp -->
+  <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen">
+    <param name="x_min" value="0.0"/>
+    <param name="x_max" value="5.0"/>
+    <param name="y_min" value="-5.0"/>
+    <param name="y_max" value="5.0"/>
+    <param name="z_min" value="0.0"/>
+    <param name="z_max" value="0.50"/>
+  </node>
+
+  <!-- gpd ros wrapper -->
+  <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
+
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch" >
+    <arg name="paused" value="false"/>
+    <arg name="gui" value="true"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="recording" value="false"/>
+    <arg name="debug" value="false"/>
+    <!-- <arg name="verbose" value="true"/> -->
+  </include>
+
+
+  <!-- load model into parameter server -->
+  <param name="robot_description" command="$(find xacro)/xacro '$(find gpd_simulation)/urdf/cylinder_camera.urdf.xacro'"/>
+
+  <!-- spawn robot using urdf -->
+  <node name="spawn_urdf_1" pkg="gazebo_ros" type="spawn_model"
+    args="-param robot_description -urdf -x 0.0 -y 0.0 -z 0.0 -model robot" respawn="false" output="screen"/>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" required="false" args="-d $(find gpd_simulation)/config/pcd.rviz"/>
+
+</launch>

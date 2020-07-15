@@ -322,52 +322,70 @@ bool requestGraspCloudCallBack(std_srvs::Empty::Request&, std_srvs::Empty::Respo
 */
 void cloudCallBack(const sensor_msgs::PointCloud2::ConstPtr &msg)
 {
-  // Convert transform from base_link to optical frame to a eigen matrix
-  Eigen::Matrix4f eigen_transform_base_optical = tf2::transformToEigen(t_stamped_base_opt).matrix().cast<float>();
-
-  // transfom point cloud into frame of base_link
-  transformPointCloud(eigen_transform_base_optical, *msg.get(), cloud_msg);
-  cloud_msg.header.frame_id = t_stamped_base_opt.header.frame_id;
-
-
-  // convert from ROS msg to a point cloud
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-  pcl::fromROSMsg(cloud_msg, *cloud);
-  // ROS_INFO("Point cloud size: %lu ", cloud->points.size());
-
-
-  // pcl::PointXYZRGB min_pt, max_pt;
-  // pcl::getMinMax3D(*cloud, min_pt, max_pt);
-  //
-  // std::cout << "Pre filter" << std::endl;
-  // std::cout << "min x: " << min_pt.x << std::endl;
-  // std::cout << "min y: " << min_pt.y << std::endl;
-  // std::cout << "min z: " << min_pt.z << std::endl<<std::endl;
-  //
-  // std::cout << "max x: " << max_pt.x << std::endl;
-  // std::cout << "max y: " << max_pt.y << std::endl;
-  // std::cout << "max z: " << max_pt.z << std::endl<<std::endl;
-
-
-  // remove points bellow a vertical threshold
-  passThroughFilter(cloud);
-
-
-  // segment objects from table
-  removeTable(cloud);
-  // ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
-
-
-  if (cloud->points.empty())
+  if (cloud_srv_active)
   {
-    ROS_ERROR("Cloud empty");
+    // Convert transform from base_link to optical frame to a eigen matrix
+    Eigen::Matrix4f eigen_transform_base_optical = tf2::transformToEigen(t_stamped_base_opt).matrix().cast<float>();
+
+    // transfom point cloud into frame of base_link
+    transformPointCloud(eigen_transform_base_optical, *msg.get(), cloud_msg);
+    cloud_msg.header.frame_id = t_stamped_base_opt.header.frame_id;
+
+
+    // convert from ROS msg to a point cloud
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+    pcl::fromROSMsg(cloud_msg, *cloud);
+    // ROS_INFO("Point cloud size: %lu ", cloud->points.size());
+
+
+    // pcl::PointXYZRGB min_pt, max_pt;
+    // pcl::getMinMax3D(*cloud, min_pt, max_pt);
+    //
+    // std::cout << "Pre filter" << std::endl;
+    // std::cout << "min x: " << min_pt.x << std::endl;
+    // std::cout << "min y: " << min_pt.y << std::endl;
+    // std::cout << "min z: " << min_pt.z << std::endl<<std::endl;
+    //
+    // std::cout << "max x: " << max_pt.x << std::endl;
+    // std::cout << "max y: " << max_pt.y << std::endl;
+    // std::cout << "max z: " << max_pt.z << std::endl<<std::endl;
+
+
+    // remove points bellow a vertical threshold
+    passThroughFilter(cloud);
+
+
+    // segment objects from table
+    removeTable(cloud);
+    // ROS_INFO("Segmented point cloud size: %lu ", cloud->points.size());
+
+
+    if (!cloud->points.empty())
+    {
+      // ROS_INFO("Saving cloud to file...");
+      //
+      // if (!pcl::io::savePCDFile("cylinder.pcd", *cloud))
+      // {
+      //   ROS_INFO("Cloud save");
+      // }
+      //
+      // else
+      // {
+      //   ROS_ERROR("Failed to save cloud");
+      // }
+
+      // covert back to ROS msg
+      pcl::toROSMsg(*cloud, cloud_msg);
+
+      cloud_msg_received = true;
+    }
+
+    else
+    {
+      ROS_ERROR("Cloud empty");
+    }
   }
-
-  // // covert back to ROS msg
-  pcl::toROSMsg(*cloud, cloud_msg);
-
-  cloud_msg_received = true;
 }
 
 
@@ -626,17 +644,41 @@ int main(int argc, char** argv)
   // grasp_pose_robot.pose.orientation.z = -0.0728375;
   // grasp_pose_robot.pose.orientation.w = 0.73987;
   //
+  // grasp_candidate.frame_id = grasp_pose_robot.header.frame_id;
+  // tf::pointMsgToEigen(grasp_pose_robot.pose.position, grasp_candidate.position);
+  //
   // tf::quaternionMsgToEigen(grasp_pose_robot.pose.orientation, grasp_candidate.quat);
   // grasp_candidate.approach = grasp_candidate.quat.toRotationMatrix().col(0);
   // grasp_candidate.binormal = grasp_candidate.quat.toRotationMatrix().col(1);
   // grasp_candidate.axis = grasp_candidate.quat.toRotationMatrix().col(2);
-  // grasp_candidate.frame_id = grasp_pose_robot.header.frame_id;
   //
   // grasp_selected = true;
   /////////////////////////////////////////////////////
 
-
-
+  /////////////////////////////////////////////////////
+  // load file for testing
+  // ROS_INFO("Loading cloud from file...");
+  //
+  // pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+  // if (!pcl::io::loadPCDFile("/home/bostoncleek/GPD_ws/src/gpd_simulation/pcd/cylinder.pcd", *cloud))
+  // {
+  //   ROS_INFO("Cloud loaded");
+  // }
+  //
+  // else
+  // {
+  //   ROS_ERROR("Failed to load cloud");
+  // }
+  //
+  // ROS_INFO("Cloud here");
+  //
+  //
+  // // covert back to ROS msg
+  // pcl::toROSMsg(*cloud, cloud_msg);
+  // cloud_msg.header.frame_id = "base_link";
+  //
+  // cloud_msg_received = true;
+  /////////////////////////////////////////////////////
 
 
 
@@ -660,6 +702,8 @@ int main(int argc, char** argv)
 
     if (grasp_selected)
     {
+      ROS_INFO("Pub grasp viz");
+
       // marker array viz best grasp
       visualization_msgs::MarkerArray marker_array;
       visualizeGraspCandidate(marker_array);
