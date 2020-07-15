@@ -1,6 +1,6 @@
 <launch>
 
-  <!-- requests graps and commands robot to move -->
+  <!-- requests grasp -->
   <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen">
     <param name="x_min" value="0.17"/>
     <param name="x_max" value="0.50"/>
@@ -14,10 +14,10 @@
   <include file ="$(find gpd_ros)/launch/gpd_wrapper.launch"/>
 
   <!-- Realsense ROS-->
-  <!-- <include file ="$(find realsense2_camera)/launch/rs_camera.launch">
+  <include file ="$(find realsense2_camera)/launch/rs_camera.launch">
     <arg name="device_type" value="d415"/>
     <arg name="filters" value="pointcloud"/>
-  </include> -->
+  </include>
 
   <!-- tf from the base link to the camera link -->
   <node pkg="tf2_ros" type="static_transform_publisher" name="basetocamera" args="-0.085 -0.125 0.61 0 0.7853 0 base_link camera_link"/>
