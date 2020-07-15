@@ -196,29 +196,29 @@ void addCollisionBox(moveit::planning_interface::PlanningSceneInterface& plannin
 
   //////////////////////////////////////////////////////////////////////////
   // Add the box
-  // collision_objects[0].id = "box";
-  // collision_objects[0].header.frame_id = "base_link";
-  //
-  // // Define the primitive and its dimensions
-  // collision_objects[0].primitives.resize(1);
-  // collision_objects[0].primitives[0].type = collision_objects[1].primitives[0].BOX;
-  // collision_objects[0].primitives[0].dimensions.resize(3);
-  // collision_objects[0].primitives[0].dimensions[0] = 0.1;
-  // collision_objects[0].primitives[0].dimensions[1] = 0.066;
-  // collision_objects[0].primitives[0].dimensions[2] = 0.04;
-  //
-  // // Define the pose of the box
-  // collision_objects[0].primitive_poses.resize(1);
-  // collision_objects[0].primitive_poses[0].position.x = 0.4;
-  // collision_objects[0].primitive_poses[0].position.y = 0.0;
-  // collision_objects[0].primitive_poses[0].position.z = 0.05;
-  //
-  // collision_objects[0].primitive_poses[0].orientation.x = 0.5;
-  // collision_objects[0].primitive_poses[0].orientation.y = -0.5;
-  // collision_objects[0].primitive_poses[0].orientation.z = 0.5;
-  // collision_objects[0].primitive_poses[0].orientation.w = 0.5;
-  //
-  // collision_objects[0].operation = collision_objects[0].ADD;
+  collision_objects[0].id = "box";
+  collision_objects[0].header.frame_id = "base_link";
+
+  // Define the primitive and its dimensions
+  collision_objects[0].primitives.resize(1);
+  collision_objects[0].primitives[0].type = collision_objects[1].primitives[0].BOX;
+  collision_objects[0].primitives[0].dimensions.resize(3);
+  collision_objects[0].primitives[0].dimensions[0] = 0.1;
+  collision_objects[0].primitives[0].dimensions[1] = 0.066;
+  collision_objects[0].primitives[0].dimensions[2] = 0.04;
+
+  // Define the pose of the box
+  collision_objects[0].primitive_poses.resize(1);
+  collision_objects[0].primitive_poses[0].position.x = 0.4;
+  collision_objects[0].primitive_poses[0].position.y = 0.0;
+  collision_objects[0].primitive_poses[0].position.z = 0.05;
+
+  collision_objects[0].primitive_poses[0].orientation.x = 0.5;
+  collision_objects[0].primitive_poses[0].orientation.y = -0.5;
+  collision_objects[0].primitive_poses[0].orientation.z = 0.5;
+  collision_objects[0].primitive_poses[0].orientation.w = 0.5;
+
+  collision_objects[0].operation = collision_objects[0].ADD;
 
   //////////////////////////////////////////////////////////////////////////
   // Add the table
@@ -376,11 +376,12 @@ int main(int argc, char** argv)
   spinner.start();
 
   // Move group interface
-  static const std::string PLANNING_GROUP = "manipulator";
+  static const std::string ARM_PLANNING_GROUP = "manipulator";
   static const std::string POSE_REF_FRAME = "base_link";
   static const std::string END_EFFECTOR_LINK = "ee_link";
 
-  moveit::planning_interface::MoveGroupInterface move_group(PLANNING_GROUP);
+  // Setup Mnaipulator planning group
+  moveit::planning_interface::MoveGroupInterface move_group(ARM_PLANNING_GROUP);
   move_group.setPlanningTime(60.0);
   // move_group.setNumPlanningAttempts(2);
 
@@ -388,9 +389,10 @@ int main(int argc, char** argv)
   move_group.setPoseReferenceFrame(POSE_REF_FRAME);
 
 
+
   // Setup visualization
-  rviz_visual_tools::RvizVisualToolsPtr visual_tools(new rviz_visual_tools::RvizVisualTools("base_link","/rviz_visual_markers"));
-  visual_tools->trigger();
+  // rviz_visual_tools::RvizVisualToolsPtr visual_tools(new rviz_visual_tools::RvizVisualTools("base_link","/rviz_visual_markers"));
+  // visual_tools->trigger();
 
 
   // Reference frame for this robot.
@@ -407,6 +409,7 @@ int main(int argc, char** argv)
 
   ROS_INFO_NAMED("GPD", "Pose reference frame: %s", move_group.getPoseReferenceFrame().c_str());
   ROS_INFO_NAMED("GPD", "Planning reference frame: %s", move_group.getPlanningFrame().c_str());
+
 
 
   // Setup planning scene
@@ -458,11 +461,12 @@ int main(int argc, char** argv)
 
   /////////////////////////////////////////////////////
   // Pick
-  visual_tools->prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
+  // visual_tools->prompt("Press 'next' in the RvizVisualToolsGui window to plan to pick");
 
   robotiq_85_msgs::GripperCmd gripper_cmd;              // gripper hardware msg
 
   // Open gripper
+  ROS_INFO("Open gripper");
   gripper_cmd.position = 0.8;
   robotiq_cmd_pub.publish(gripper_cmd);
 
@@ -479,8 +483,10 @@ int main(int argc, char** argv)
 
 
   // Close gripper
+  ROS_INFO("Close gripper");
   gripper_cmd.position = 0.0;
   robotiq_cmd_pub.publish(gripper_cmd);
+
 
   // wait for gripper to close
   ros::Duration(1.0).sleep();
@@ -488,6 +494,7 @@ int main(int argc, char** argv)
   // // Attach box to gripper
   // move_group.attachObject("box");
 
+  // lift direction after pick/place
   geometry_msgs::Vector3 lift_direction;
   lift_direction.x = 0.0;
   lift_direction.y = 0.0;
@@ -503,7 +510,7 @@ int main(int argc, char** argv)
 
 
   /////////////////////////////////////////////////////
-  // Place
+  // Place (move 20 left of where th object was picked)
   geometry_msgs::Pose drop_goal = grasp_goal;
   drop_goal.position.y = drop_goal.position.y + 0.20;
 
@@ -512,14 +519,15 @@ int main(int argc, char** argv)
 
 
   // Open gripper
+  ROS_INFO("Open gripper");
   gripper_cmd.position = 0.8;
   robotiq_cmd_pub.publish(gripper_cmd);
 
   // wait for gripper to open
   ros::Duration(1.0).sleep();
-//
+
   // // Detach box to gripper
-  // move_group.detachObject("cracker_box");
+  // move_group.detachObject("box");
 
 
   // place retreat
