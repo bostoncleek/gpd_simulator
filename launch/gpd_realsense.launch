@@ -1,5 +1,5 @@
 <launch>
-
+  
   <!-- requests grasp -->
   <node name="gpd_realsense" pkg="gpd_simulation" type="gpd_realsense" output="screen">
     <param name="x_min" value="0.17"/>
